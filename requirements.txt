@@ -1,0 +1,7 @@
+matplotlib
+nibabel
+numpy
+pandas
+scipy
+torch
+tqdm

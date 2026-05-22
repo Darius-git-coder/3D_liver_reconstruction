@@ -1,0 +1,78 @@
+project:
+  exp_name: "liver_inpainting_partial"
+  runs_root: "./runs"
+  timestamped_runs: true
+  python_exe: ""
+  device_hint: "auto"
+  seed: 1337
+
+paths:
+  data_glob: "./data/preprocessed_liver_ct_64/*.nii.gz"
+  volume_for_invariance: "./data/preprocessed_liver_ct_64/example_case.nii.gz"
+  split_file: "./runs/splits/liver_seed1337_split.json"
+
+split:
+  script: "scripts/create_data_split.py"
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+
+train:
+  script: "scripts/train_inpainting.py"
+  model: "partial"
+  dim: 64
+  epochs: 500
+  batch: 2
+  lr: 1e-4
+  wd: 5e-6
+  slices_min: 8
+  slices_max: 64
+  slice_sampling: "uniform"
+  slice_mean: null
+  slice_std: null
+  hole_weight: 30.0
+  valid_weight: 1.0
+  foreground_threshold: 0.1
+  w_grad: 0.05
+  w_ssim: 0.0
+  w_ms_ssim: 0.2
+  sparse_noise_std: 0.0
+  intensity_aug_prob: 0.0
+  intensity_scale_min: 0.85
+  intensity_scale_max: 1.15
+  intensity_bias_min: -0.05
+  intensity_bias_max: 0.05
+  thickness_vox: 1.0
+  split_file: "./runs/splits/liver_seed1337_split.json"
+  train_split: "train"
+  val_split: "val"
+  hard_constraint: true
+  amp: true
+  deterministic: true
+  resume: ""
+
+eval:
+  script: "scripts/evaluate_inpainting.py"
+  model: "partial"
+  dim: 64
+  batch: 2
+  split_file: "./runs/splits/liver_seed1337_split.json"
+  split: "test"
+  hard_constraint: true
+  weights: ""
+
+invariance:
+  script: "scripts/invariance_test.py"
+  dim: 64
+  slices: 64
+  thickness_vox: 1.0
+  weights: ""
+
+plot:
+  history_file: "history.json"
+
+suite:
+  script: "scripts/run_experiment_suite.py"
+  smoke_config: "configs/ablation_smoke.example.json"
+  short_config: "configs/ablation_short.example.json"
+  final_config: "configs/ablation_final.example.json"

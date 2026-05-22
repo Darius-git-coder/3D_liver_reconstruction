@@ -1,0 +1,79 @@
+{
+  "project": {
+    "data_glob": "./data/preprocessed_liver_ct_64/*.nii.gz",
+    "split_file": "./runs/splits/liver_seed1337_split.json",
+    "runs_root": "./runs/ablation_suite",
+    "python_exe": "",
+    "eval_split": "test"
+  },
+  "train_defaults": {
+    "dim": 64,
+    "epochs": 500,
+    "batch": 2,
+    "lr": 0.0001,
+    "wd": 0.000005,
+    "init_feat": 32,
+    "slices_min": 8,
+    "slices_max": 64,
+    "slice_sampling": "uniform",
+    "hole_weight": 30.0,
+    "valid_weight": 1.0,
+    "foreground_threshold": 0.1,
+    "w_grad": 0.05,
+    "w_ssim": 0.0,
+    "w_ms_ssim": 0.2,
+    "thickness_vox": 1.0,
+    "seed": 1337,
+    "amp": true,
+    "deterministic": true,
+    "hard_constraint": true
+  },
+  "eval_defaults": {
+    "dim": 64,
+    "batch": 1,
+    "slices_min": 8,
+    "slices_max": 64,
+    "slice_sampling": "uniform",
+    "thickness_vox": 1.0,
+    "seed": 1337,
+    "hard_constraint": true
+  },
+  "experiments": [
+    {
+      "name": "partialresunet3d_full",
+      "model": "partial"
+    },
+    {
+      "name": "partialresunet3d_no_hard_constraint",
+      "model": "partial",
+      "train": {
+        "hard_constraint": false
+      },
+      "eval": {
+        "hard_constraint": false
+      }
+    },
+    {
+      "name": "partialresunet3d_no_gradient_loss",
+      "model": "partial",
+      "train": {
+        "w_grad": 0.0
+      }
+    },
+    {
+      "name": "partialresunet3d_no_ms_ssim",
+      "model": "partial",
+      "train": {
+        "w_ms_ssim": 0.0
+      }
+    },
+    {
+      "name": "standard_unet3d_no_partialconv",
+      "model": "baseline"
+    },
+    {
+      "name": "gated_unet3d",
+      "model": "gated"
+    }
+  ]
+}
