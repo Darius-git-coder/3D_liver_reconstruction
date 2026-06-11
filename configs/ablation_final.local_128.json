@@ -1,0 +1,83 @@
+{
+  "project": {
+    "data_glob": "E:/Bachelorarbeit_Daten/pipeline_preprocessed_data_128/*.nii.gz",
+    "split_file": "./runs/splits/liver_seed1337_split_128.json",
+    "runs_root": "./runs/ablation_final_128",
+    "python_exe": "",
+    "eval_split": "test"
+  },
+  "train_defaults": {
+    "dim": 128,
+    "epochs": 150,
+    "batch": 2,
+    "lr": 0.0001,
+    "wd": 0.000005,
+    "init_feat": 32,
+    "slices_min": 8,
+    "slices_max": 128,
+    "slice_sampling": "normal",
+    "slice_mean": 64.0,
+    "slice_std": null,
+    "hole_weight": 30.0,
+    "valid_weight": 1.0,
+    "foreground_threshold": 0.1,
+    "w_grad": 0.05,
+    "w_ssim": 0.0,
+    "w_ms_ssim": 0.2,
+    "sparse_noise_std": 0.0,
+    "intensity_aug_prob": 0.8,
+    "intensity_scale_min": 0.85,
+    "intensity_scale_max": 1.15,
+    "intensity_bias_min": -0.05,
+    "intensity_bias_max": 0.05,
+    "thickness_vox": 1.0,
+    "seed": 1337,
+    "amp": true,
+    "deterministic": true,
+    "hard_constraint": true,
+    "curriculum": true,
+    "curriculum_stage_epochs": 35
+  },
+  "eval_defaults": {
+    "dim": 128,
+    "batch": 1,
+    "slices": 64,
+    "thickness_vox": 1.0,
+    "seed": 1337,
+    "hard_constraint": true
+  },
+  "experiments": [
+    {
+      "name": "partialresunet3d_full",
+      "model": "partial"
+    },
+    {
+      "name": "partialresunet3d_no_hard_constraint",
+      "model": "partial",
+      "train": {
+        "hard_constraint": false
+      },
+      "eval": {
+        "hard_constraint": false
+      }
+    },
+    {
+      "name": "partialresunet3d_no_gradient_loss",
+      "model": "partial",
+      "train": {
+        "w_grad": 0.0
+      }
+    },
+    {
+      "name": "partialresunet3d_no_ms_ssim",
+      "model": "partial",
+      "train": {
+        "w_ms_ssim": 0.0
+      }
+    },
+    {
+      "name": "standard_unet3d_no_partialconv",
+      "model": "baseline"
+    }
+  ]
+}

@@ -6,7 +6,18 @@ import numpy as np
 from scipy import stats
 
 
-RESERVED_COLUMNS = {"index", "case_id", "path", "split", "experiment", "label", "weight_path"}
+RESERVED_COLUMNS = {
+    "index",
+    "case_id",
+    "path",
+    "split",
+    "experiment",
+    "label",
+    "model",
+    "weight_path",
+    "eval_seed",
+    "slice_geometry",
+}
 
 
 def metric_columns_from_rows(rows: Sequence[Mapping[str, object]]) -> List[str]:

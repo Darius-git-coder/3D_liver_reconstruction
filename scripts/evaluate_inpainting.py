@@ -102,6 +102,15 @@ def main() -> None:
     ap.add_argument("--slice_sampling", type=str, default="uniform", choices=["uniform", "normal"])
     ap.add_argument("--slice_mean", type=float, default=None)
     ap.add_argument("--slice_std", type=float, default=None)
+    ap.add_argument("--slice_geometry", type=str, default="random", choices=["random", "fibonacci", "ultrasound_fan", "ultrasound_probe"])
+    ap.add_argument("--slice_axis", type=float, nargs=3, default=None, metavar=("X", "Y", "Z"))
+    ap.add_argument("--slice_axis_jitter_deg", type=float, default=25.0)
+    ap.add_argument("--slice_fan_half_angle_deg", type=float, default=35.0)
+    ap.add_argument("--slice_elevation_jitter_deg", type=float, default=6.0)
+    ap.add_argument("--slice_sweep_jitter_deg", type=float, default=2.5)
+    ap.add_argument("--probe_pos_sigma_vox", type=float, default=1.0)
+    ap.add_argument("--probe_depth_sigma_vox", type=float, default=6.0)
+    ap.add_argument("--probe_tilt_sigma", type=float, default=0.08)
     ap.add_argument("--thickness_vox", type=float, default=1.0)
     ap.add_argument("--seed", type=int, default=1337)
     ap.add_argument("--split_file", type=str, default="")
@@ -134,6 +143,15 @@ def main() -> None:
         slice_sampling=args.slice_sampling,
         slice_mean=args.slice_mean,
         slice_std=args.slice_std,
+        slice_geometry=args.slice_geometry,
+        slice_axis=args.slice_axis,
+        slice_axis_jitter_deg=args.slice_axis_jitter_deg,
+        slice_fan_half_angle_deg=args.slice_fan_half_angle_deg,
+        slice_elevation_jitter_deg=args.slice_elevation_jitter_deg,
+        slice_sweep_jitter_deg=args.slice_sweep_jitter_deg,
+        probe_pos_sigma_vox=args.probe_pos_sigma_vox,
+        probe_depth_sigma_vox=args.probe_depth_sigma_vox,
+        probe_tilt_sigma=args.probe_tilt_sigma,
         thickness_vox=args.thickness_vox,
         is_train=False,
         seed=args.seed,
@@ -198,6 +216,15 @@ def main() -> None:
             "slice_sampling": str(args.slice_sampling),
             "slice_mean": None if args.slice_mean is None else float(args.slice_mean),
             "slice_std": None if args.slice_std is None else float(args.slice_std),
+            "slice_geometry": str(args.slice_geometry),
+            "slice_axis": None if args.slice_axis is None else [float(v) for v in args.slice_axis],
+            "slice_axis_jitter_deg": float(args.slice_axis_jitter_deg),
+            "slice_fan_half_angle_deg": float(args.slice_fan_half_angle_deg),
+            "slice_elevation_jitter_deg": float(args.slice_elevation_jitter_deg),
+            "slice_sweep_jitter_deg": float(args.slice_sweep_jitter_deg),
+            "probe_pos_sigma_vox": float(args.probe_pos_sigma_vox),
+            "probe_depth_sigma_vox": float(args.probe_depth_sigma_vox),
+            "probe_tilt_sigma": float(args.probe_tilt_sigma),
             "thickness_vox": float(args.thickness_vox),
             "seed": int(args.seed),
             "split": args.split if args.split_file else "all",

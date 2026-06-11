@@ -21,10 +21,11 @@ from tqdm import tqdm
 
 from inpainting3d.data import (
     center_of_mass_threshold,
+    foreground_bbox_threshold,
     load_nifti_volume,
     normalize_volume,
-    random_normals,
     resample_to_shape,
+    sample_slice_planes,
     simulate_sparse_acquisition,
 )
 from inpainting3d.losses import CombinedInpaintingLoss, CombinedLossConfig
@@ -47,6 +48,7 @@ from inpainting3d.utils import (
     finalize_inpainting_prediction,
     set_reproducibility,
     strip_dataparallel_prefix,
+    torch_load_weights_compat,
 )
 
 
@@ -60,6 +62,15 @@ class LiverInpaintingDataset(Dataset):
         slice_sampling: str = "uniform",
         slice_mean: float | None = None,
         slice_std: float | None = None,
+        slice_geometry: str = "random",
+        slice_axis: Tuple[float, float, float] | None = None,
+        slice_axis_jitter_deg: float = 25.0,
+        slice_fan_half_angle_deg: float = 35.0,
+        slice_elevation_jitter_deg: float = 6.0,
+        slice_sweep_jitter_deg: float = 2.5,
+        probe_pos_sigma_vox: float = 1.0,
+        probe_depth_sigma_vox: float = 6.0,
+        probe_tilt_sigma: float = 0.08,
         thickness_vox: float = 1.0,
         canonical: bool = True,
         normalize: str = "clip01",
@@ -82,6 +93,15 @@ class LiverInpaintingDataset(Dataset):
         self.slice_sampling = str(slice_sampling).strip().lower()
         self.slice_mean = None if slice_mean is None else float(slice_mean)
         self.slice_std = None if slice_std is None else float(slice_std)
+        self.slice_geometry = str(slice_geometry).strip().lower()
+        self.slice_axis = None if slice_axis is None else tuple(float(v) for v in slice_axis)
+        self.slice_axis_jitter_deg = float(slice_axis_jitter_deg)
+        self.slice_fan_half_angle_deg = float(slice_fan_half_angle_deg)
+        self.slice_elevation_jitter_deg = float(slice_elevation_jitter_deg)
+        self.slice_sweep_jitter_deg = float(slice_sweep_jitter_deg)
+        self.probe_pos_sigma_vox = float(probe_pos_sigma_vox)
+        self.probe_depth_sigma_vox = float(probe_depth_sigma_vox)
+        self.probe_tilt_sigma = float(probe_tilt_sigma)
         self.thickness_vox = thickness_vox
         self.canonical = canonical
         self.normalize = normalize
@@ -139,13 +159,30 @@ class LiverInpaintingDataset(Dataset):
             vol = np.clip(scale * vol + bias, 0.0, 1.0)
 
         center = center_of_mass_threshold(vol, thr=0.1)
+        bbox_min, bbox_max = foreground_bbox_threshold(vol, thr=0.1)
         n_slices = self._sample_num_slices(rng)
-        normals = random_normals(n_slices, rng)
+        points, normals = sample_slice_planes(
+            n_slices,
+            rng,
+            strategy=self.slice_geometry,
+            center=center,
+            bbox_min=bbox_min,
+            bbox_max=bbox_max,
+            preferred_axis=self.slice_axis,
+            axis_jitter_deg=self.slice_axis_jitter_deg,
+            fan_half_angle_deg=self.slice_fan_half_angle_deg,
+            elevation_jitter_deg=self.slice_elevation_jitter_deg,
+            sweep_jitter_deg=self.slice_sweep_jitter_deg,
+            probe_pos_sigma_vox=self.probe_pos_sigma_vox,
+            probe_depth_sigma_vox=self.probe_depth_sigma_vox,
+            probe_tilt_sigma=self.probe_tilt_sigma,
+        )
 
         sparse, mask, _hits = simulate_sparse_acquisition(
             vol,
             normals=normals,
             center=center,
+            points=points,
             thickness_vox=self.thickness_vox,
             chunk=64,
         )
@@ -167,6 +204,7 @@ class LiverInpaintingDataset(Dataset):
                 "case_id": case_id_from_path(path),
                 "index": int(idx),
                 "num_slices": int(n_slices),
+                "slice_geometry": str(self.slice_geometry),
                 "seed": None if self.is_train else int(self.seed + idx),
             }
             return x_t, y_t, meta
@@ -284,6 +322,15 @@ def main() -> None:
     ap.add_argument("--slice_sampling", type=str, default="uniform", choices=["uniform", "normal"])
     ap.add_argument("--slice_mean", type=float, default=None)
     ap.add_argument("--slice_std", type=float, default=None)
+    ap.add_argument("--slice_geometry", type=str, default="random", choices=["random", "fibonacci", "ultrasound_fan", "ultrasound_probe"])
+    ap.add_argument("--slice_axis", type=float, nargs=3, default=None, metavar=("X", "Y", "Z"))
+    ap.add_argument("--slice_axis_jitter_deg", type=float, default=25.0)
+    ap.add_argument("--slice_fan_half_angle_deg", type=float, default=35.0)
+    ap.add_argument("--slice_elevation_jitter_deg", type=float, default=6.0)
+    ap.add_argument("--slice_sweep_jitter_deg", type=float, default=2.5)
+    ap.add_argument("--probe_pos_sigma_vox", type=float, default=1.0)
+    ap.add_argument("--probe_depth_sigma_vox", type=float, default=6.0)
+    ap.add_argument("--probe_tilt_sigma", type=float, default=0.08)
     ap.add_argument("--hole_weight", type=float, default=30.0)
     ap.add_argument("--valid_weight", type=float, default=1.0)
     ap.add_argument("--hole_fg_weight", type=float, default=None)
@@ -305,6 +352,7 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=1337)
     ap.add_argument("--deterministic", action="store_true")
     ap.add_argument("--amp", action="store_true")
+    ap.add_argument("--init_weights", type=str, default="")
     ap.add_argument("--resume", type=str, default="")
     ap.add_argument("--split_file", type=str, default="", help="Persistierte Split-JSON mit train/val/test-Falllisten.")
     ap.add_argument("--train_split", type=str, default="train")
@@ -317,6 +365,9 @@ def main() -> None:
     ap.add_argument("--no_hard_constraint", dest="hard_constraint", action="store_false")
     ap.set_defaults(hard_constraint=True)
     args = ap.parse_args()
+
+    if args.resume and args.init_weights:
+        raise ValueError("--resume und --init_weights koennen nicht gleichzeitig verwendet werden.")
 
     ensure_dir(args.out)
     ensure_dir(os.path.join(args.out, "samples"))
@@ -334,6 +385,15 @@ def main() -> None:
         slice_sampling=args.slice_sampling,
         slice_mean=args.slice_mean,
         slice_std=args.slice_std,
+        slice_geometry=args.slice_geometry,
+        slice_axis=args.slice_axis,
+        slice_axis_jitter_deg=args.slice_axis_jitter_deg,
+        slice_fan_half_angle_deg=args.slice_fan_half_angle_deg,
+        slice_elevation_jitter_deg=args.slice_elevation_jitter_deg,
+        slice_sweep_jitter_deg=args.slice_sweep_jitter_deg,
+        probe_pos_sigma_vox=args.probe_pos_sigma_vox,
+        probe_depth_sigma_vox=args.probe_depth_sigma_vox,
+        probe_tilt_sigma=args.probe_tilt_sigma,
         thickness_vox=args.thickness_vox,
         is_train=True,
         seed=args.seed,
@@ -355,6 +415,15 @@ def main() -> None:
         slice_sampling=args.slice_sampling,
         slice_mean=args.slice_mean,
         slice_std=args.slice_std,
+        slice_geometry=args.slice_geometry,
+        slice_axis=args.slice_axis,
+        slice_axis_jitter_deg=args.slice_axis_jitter_deg,
+        slice_fan_half_angle_deg=args.slice_fan_half_angle_deg,
+        slice_elevation_jitter_deg=args.slice_elevation_jitter_deg,
+        slice_sweep_jitter_deg=args.slice_sweep_jitter_deg,
+        probe_pos_sigma_vox=args.probe_pos_sigma_vox,
+        probe_depth_sigma_vox=args.probe_depth_sigma_vox,
+        probe_tilt_sigma=args.probe_tilt_sigma,
         thickness_vox=args.thickness_vox,
         is_train=False,
         seed=args.seed,
@@ -384,6 +453,18 @@ def main() -> None:
     model = build_model(args.model, init_feat=args.init_feat).to(device)
     if torch.cuda.device_count() > 1:
         model = torch.nn.DataParallel(model)
+
+    if args.init_weights:
+        state = torch_load_weights_compat(args.init_weights, map_location=device)
+        if isinstance(state, dict) and "model" in state and isinstance(state["model"], dict):
+            state = state["model"]
+        if not (isinstance(state, dict) and any(isinstance(value, torch.Tensor) for value in state.values())):
+            raise RuntimeError("Initialgewichte haben unerwartetes Format. Erwartet state_dict oder Checkpoint mit 'model'.")
+        clean_state = strip_dataparallel_prefix(state)
+        if isinstance(model, torch.nn.DataParallel):
+            model.module.load_state_dict(clean_state, strict=True)
+        else:
+            model.load_state_dict(clean_state, strict=True)
 
     optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.wd)
     if args.scheduler == "cosine":

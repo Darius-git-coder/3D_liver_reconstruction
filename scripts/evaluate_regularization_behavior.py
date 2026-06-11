@@ -57,18 +57,80 @@ DEFAULT_CONVERGENCE_SLICES = [4, 8, 16, 32, 64, 128]
 DEFAULT_NOISE_LEVELS = [0.0, 0.01, 0.02, 0.05]
 DEFAULT_SENSITIVITY_NOISE_LEVELS = [0.005, 0.01, 0.02]
 DEFAULT_HEADLINE_METRICS = ["rmse_missing", "ssim_all"]
+DEFAULT_PLOT_EXTENSION = ".pdf"
 DISPLAY_NAMES = {
-    "rmse_missing": "RMSE missing",
-    "mae_missing": "MAE missing",
-    "psnr_missing": "PSNR missing",
-    "ssim_missing": "SSIM missing",
-    "ssim_all": "SSIM full volume",
-    "stability_ratio_all": "Stability ratio full volume",
-    "stability_ratio_missing": "Stability ratio missing",
-    "output_delta_rmse_all": "Output delta RMSE full volume",
-    "output_delta_rmse_missing": "Output delta RMSE missing",
-    "input_delta_rms_known": "Input delta RMS observed",
+    "en": {
+        "rmse_missing": "RMSE missing",
+        "mae_missing": "MAE missing",
+        "psnr_missing": "PSNR missing",
+        "ssim_missing": "SSIM missing",
+        "ssim_all": "SSIM full volume",
+        "stability_ratio_all": "Stability ratio full volume",
+        "stability_ratio_missing": "Stability ratio missing",
+        "output_delta_rmse_all": "Output delta RMSE full volume",
+        "output_delta_rmse_missing": "Output delta RMSE missing",
+        "input_delta_rms_known": "Input delta RMS observed",
+    },
+    "de": {
+        "rmse_missing": "RMSE fehlende Voxel",
+        "mae_missing": "MAE fehlende Voxel",
+        "psnr_missing": "PSNR fehlende Voxel",
+        "ssim_missing": "SSIM fehlende Voxel",
+        "ssim_all": "SSIM Gesamtvolumen",
+        "stability_ratio_all": "Stabilitätsverhältnis Gesamtvolumen",
+        "stability_ratio_missing": "Stabilitätsverhältnis fehlende Voxel",
+        "output_delta_rmse_all": "Ausgabe-Delta RMSE Gesamtvolumen",
+        "output_delta_rmse_missing": "Ausgabe-Delta RMSE fehlende Voxel",
+        "input_delta_rms_known": "Eingabe-Delta RMS beobachtete Voxel",
+    },
 }
+UI_TEXT = {
+    "en": {
+        "repeat_std_suffix": "repeat std",
+        "repeat_mean_suffix": "repeat mean",
+        "across_models_std_suffix": "across-model std",
+        "across_models_mean_suffix": "across-model mean",
+        "row_slices": "Slices",
+        "row_noise_std": "Noise std",
+        "row_checkpoint": "Checkpoint",
+        "x_slices": "Number of slices",
+        "x_noise_std": "Input noise std",
+        "title_information_convergence": "Information convergence",
+        "title_noise_stability": "Noise stability",
+        "title_sampling_mean": "Sampling stability: mean reconstruction quality",
+        "title_sampling_repeat": "Sampling stability: within-case repeat std",
+        "title_input_sensitivity": "Input sensitivity",
+        "title_prediction_change": "Prediction change under perturbation",
+        "ylabel_stability_ratio": "Stability ratio",
+        "ylabel_output_delta_rmse": "Output delta RMSE",
+        "title_training_robustness": "Training robustness across checkpoints",
+        "title_sampling_overview": "Sampling stability",
+        "title_input_sensitivity_overview": "Input sensitivity",
+    },
+    "de": {
+        "repeat_std_suffix": "Wiederholungs-Std.",
+        "repeat_mean_suffix": "Wiederholungsmittel",
+        "across_models_std_suffix": "Std. über Modelle",
+        "across_models_mean_suffix": "Mittel über Modelle",
+        "row_slices": "Schnitte",
+        "row_noise_std": "Rausch-Std.",
+        "row_checkpoint": "Checkpoint",
+        "x_slices": "Anzahl der Schnitte",
+        "x_noise_std": "Standardabw. des Eingangsrauschens",
+        "title_information_convergence": "Informationskonvergenz",
+        "title_noise_stability": "Rauschstabilität",
+        "title_sampling_mean": "Sampling-Stabilität: mittlere Rekonstruktionsqualität",
+        "title_sampling_repeat": "Sampling-Stabilität: Wiederholungs-Std. pro Fall",
+        "title_input_sensitivity": "Eingabesensitivität",
+        "title_prediction_change": "Änderung der Vorhersage unter Störung",
+        "ylabel_stability_ratio": "Stabilitätsverhältnis",
+        "ylabel_output_delta_rmse": "Ausgabe-Delta RMSE",
+        "title_training_robustness": "Robustheit gegenüber Trainings-Checkpoints",
+        "title_sampling_overview": "Sampling-Stabilität",
+        "title_input_sensitivity_overview": "Eingabesensitivität",
+    },
+}
+ACTIVE_LANGUAGE = "en"
 COLOR_PALETTE = {
     "primary": "#0f5c6e",
     "secondary": "#a43d2c",
@@ -191,24 +253,47 @@ def write_dataframe_latex(path: str, frame: pd.DataFrame) -> None:
         handle.write(latex)
 
 
+def read_dataframe_csv_if_exists(path: str) -> pd.DataFrame | None:
+    if not os.path.exists(path):
+        return None
+    return pd.read_csv(path)
+
+
+def plot_output_path(plot_dir: str, stem: str) -> str:
+    return os.path.join(plot_dir, f"{stem}{DEFAULT_PLOT_EXTENSION}")
+
+
 def ordered_unique(values: Sequence[str]) -> List[str]:
     return list(dict.fromkeys(str(value) for value in values))
+
+
+def set_language(language: str) -> None:
+    global ACTIVE_LANGUAGE
+    resolved = str(language).strip().lower()
+    if resolved not in DISPLAY_NAMES:
+        raise ValueError(f"Unsupported language: {language}")
+    ACTIVE_LANGUAGE = resolved
+
+
+def text(key: str) -> str:
+    localized = UI_TEXT.get(ACTIVE_LANGUAGE, UI_TEXT["en"])
+    return str(localized.get(key, UI_TEXT["en"].get(key, key)))
 
 
 def metric_label(metric_name: str) -> str:
     if metric_name.endswith("_repeat_std"):
         base = metric_name[: -len("_repeat_std")]
-        return f"{metric_label(base)} repeat std"
+        return f"{metric_label(base)} {text('repeat_std_suffix')}"
     if metric_name.endswith("_repeat_mean"):
         base = metric_name[: -len("_repeat_mean")]
-        return f"{metric_label(base)} repeat mean"
+        return f"{metric_label(base)} {text('repeat_mean_suffix')}"
     if metric_name.endswith("_across_models_std"):
         base = metric_name[: -len("_across_models_std")]
-        return f"{metric_label(base)} across-model std"
+        return f"{metric_label(base)} {text('across_models_std_suffix')}"
     if metric_name.endswith("_across_models_mean"):
         base = metric_name[: -len("_across_models_mean")]
-        return f"{metric_label(base)} across-model mean"
-    return DISPLAY_NAMES.get(metric_name, metric_name.replace("_", " "))
+        return f"{metric_label(base)} {text('across_models_mean_suffix')}"
+    return DISPLAY_NAMES.get(ACTIVE_LANGUAGE, DISPLAY_NAMES["en"]).get(metric_name, metric_name.replace("_", " "))
 
 
 def validate_positive_int_list(values: Sequence[int], name: str) -> List[int]:
@@ -547,8 +632,8 @@ def save_sampling_plot(
         x_col="slice_count",
         metric_name=primary_metric,
         color=COLOR_PALETTE["primary"],
-        x_label="Number of slices",
-        title="Sampling stability: mean reconstruction quality",
+        x_label=text("x_slices"),
+        title=text("title_sampling_mean"),
     )
     plot_metric_line(
         axes[1],
@@ -556,8 +641,8 @@ def save_sampling_plot(
         x_col="slice_count",
         metric_name=f"{primary_metric}_repeat_std",
         color=COLOR_PALETTE["accent"],
-        x_label="Number of slices",
-        title="Sampling stability: within-case repeat std",
+        x_label=text("x_slices"),
+        title=text("title_sampling_repeat"),
     )
     fig.tight_layout()
     fig.savefig(out_path, dpi=220)
@@ -579,9 +664,9 @@ def save_sensitivity_plot(summary_frame: pd.DataFrame, *, out_path: str) -> None
         ci_high = subset["ci95_high"].astype(float).to_numpy()
         axes[0].plot(xs, means, marker="o", linewidth=2.2, color=color, label=metric_label(metric_name))
         axes[0].fill_between(xs, ci_low, ci_high, color=color, alpha=0.16)
-    axes[0].set_xlabel("Input noise std")
-    axes[0].set_ylabel("Stability ratio")
-    axes[0].set_title("Input sensitivity")
+    axes[0].set_xlabel(text("x_noise_std"))
+    axes[0].set_ylabel(text("ylabel_stability_ratio"))
+    axes[0].set_title(text("title_input_sensitivity"))
     axes[0].legend(loc="best")
 
     for metric_name, color in [
@@ -597,9 +682,9 @@ def save_sensitivity_plot(summary_frame: pd.DataFrame, *, out_path: str) -> None
         ci_high = subset["ci95_high"].astype(float).to_numpy()
         axes[1].plot(xs, means, marker="o", linewidth=2.2, color=color, label=metric_label(metric_name))
         axes[1].fill_between(xs, ci_low, ci_high, color=color, alpha=0.16)
-    axes[1].set_xlabel("Input noise std")
-    axes[1].set_ylabel("Output delta RMSE")
-    axes[1].set_title("Prediction change under perturbation")
+    axes[1].set_xlabel(text("x_noise_std"))
+    axes[1].set_ylabel(text("ylabel_output_delta_rmse"))
+    axes[1].set_title(text("title_prediction_change"))
     axes[1].legend(loc="best")
 
     fig.tight_layout()
@@ -641,7 +726,7 @@ def save_robustness_plot(
     ax.set_xticks(range(len(ordered_labels)))
     ax.set_xticklabels(ordered_labels, rotation=20, ha="right")
     ax.set_ylabel(metric_label(primary_metric))
-    ax.set_title("Training robustness across checkpoints")
+    ax.set_title(text("title_training_robustness"))
     fig.tight_layout()
     fig.savefig(out_path, dpi=220)
     plt.close(fig)
@@ -666,8 +751,8 @@ def save_overview_plot(
             x_col="slice_count",
             metric_name=primary_metric,
             color=COLOR_PALETTE["primary"],
-            x_label="Number of slices",
-            title="Information convergence",
+            x_label=text("x_slices"),
+            title=text("title_information_convergence"),
         )
     else:
         axes[0].set_visible(False)
@@ -679,8 +764,8 @@ def save_overview_plot(
             x_col="noise_std",
             metric_name=primary_metric,
             color=COLOR_PALETTE["secondary"],
-            x_label="Input noise std",
-            title="Noise stability",
+            x_label=text("x_noise_std"),
+            title=text("title_noise_stability"),
         )
     else:
         axes[1].set_visible(False)
@@ -692,8 +777,8 @@ def save_overview_plot(
             x_col="slice_count",
             metric_name=f"{primary_metric}_repeat_std",
             color=COLOR_PALETTE["accent"],
-            x_label="Number of slices",
-            title="Sampling stability",
+            x_label=text("x_slices"),
+            title=text("title_sampling_overview"),
         )
     else:
         axes[2].set_visible(False)
@@ -705,8 +790,8 @@ def save_overview_plot(
             x_col="noise_std",
             metric_name="stability_ratio_missing",
             color=COLOR_PALETTE["primary"],
-            x_label="Input noise std",
-            title="Input sensitivity",
+            x_label=text("x_noise_std"),
+            title=text("title_input_sensitivity_overview"),
         )
     else:
         axes[3].set_visible(False)
@@ -1027,11 +1112,184 @@ def ensure_metric_names_exist(metric_names: Sequence[str], available_metrics: Se
         raise ValueError(f"{context}: requested metrics not available: {missing}. Available metrics: {available}")
 
 
+def render_outputs_from_existing(
+    *,
+    out_dir: str,
+    studies: Sequence[str],
+    headline_metrics: Sequence[str],
+    primary_metric: str,
+    secondary_metric: str,
+) -> None:
+    raw_dir = os.path.join(out_dir, "raw")
+    summary_dir = os.path.join(out_dir, "summary")
+    table_dir = os.path.join(out_dir, "tables")
+    plot_dir = os.path.join(out_dir, "plots")
+    for path in (raw_dir, summary_dir, table_dir, plot_dir):
+        ensure_dir(path)
+
+    generated_table_paths: List[str] = []
+    convergence_summary: pd.DataFrame | None = None
+    noise_summary: pd.DataFrame | None = None
+    sampling_variability_summary: pd.DataFrame | None = None
+    sensitivity_summary: pd.DataFrame | None = None
+
+    if "convergence" in studies:
+        convergence_summary = read_dataframe_csv_if_exists(os.path.join(summary_dir, "convergence_summary_long.csv"))
+        if convergence_summary is not None and not convergence_summary.empty:
+            ensure_metric_names_exist(
+                [primary_metric, secondary_metric, *headline_metrics],
+                convergence_summary["metric"].astype(str).tolist(),
+                "convergence",
+            )
+            convergence_table = build_formatted_metric_table(
+                convergence_summary,
+                row_key="slice_count",
+                metrics=headline_metrics,
+                row_label=text("row_slices"),
+            )
+            write_dataframe_csv(os.path.join(summary_dir, "convergence_table.csv"), convergence_table)
+            convergence_tex = os.path.join(table_dir, "convergence_table.tex")
+            write_dataframe_latex(convergence_tex, convergence_table)
+            generated_table_paths.append(convergence_tex)
+            save_dual_metric_plot(
+                convergence_summary,
+                x_col="slice_count",
+                x_label=text("x_slices"),
+                primary_metric=primary_metric,
+                secondary_metric=secondary_metric,
+                title_prefix=text("title_information_convergence"),
+                out_path=plot_output_path(plot_dir, "convergence_dual_metrics"),
+            )
+
+    if "noise" in studies:
+        noise_summary = read_dataframe_csv_if_exists(os.path.join(summary_dir, "noise_summary_long.csv"))
+        if noise_summary is not None and not noise_summary.empty:
+            ensure_metric_names_exist(
+                [primary_metric, secondary_metric, *headline_metrics],
+                noise_summary["metric"].astype(str).tolist(),
+                "noise",
+            )
+            noise_table = build_formatted_metric_table(
+                noise_summary,
+                row_key="noise_std",
+                metrics=headline_metrics,
+                row_label=text("row_noise_std"),
+            )
+            write_dataframe_csv(os.path.join(summary_dir, "noise_table.csv"), noise_table)
+            noise_tex = os.path.join(table_dir, "noise_table.tex")
+            write_dataframe_latex(noise_tex, noise_table)
+            generated_table_paths.append(noise_tex)
+            save_dual_metric_plot(
+                noise_summary,
+                x_col="noise_std",
+                x_label=text("x_noise_std"),
+                primary_metric=primary_metric,
+                secondary_metric=secondary_metric,
+                title_prefix=text("title_noise_stability"),
+                out_path=plot_output_path(plot_dir, "noise_dual_metrics"),
+            )
+
+    if "sampling" in studies:
+        sampling_summary = read_dataframe_csv_if_exists(os.path.join(summary_dir, "sampling_summary_long.csv"))
+        sampling_variability_summary = read_dataframe_csv_if_exists(
+            os.path.join(summary_dir, "sampling_variability_summary_long.csv")
+        )
+        if (
+            sampling_summary is not None
+            and not sampling_summary.empty
+            and sampling_variability_summary is not None
+            and not sampling_variability_summary.empty
+        ):
+            ensure_metric_names_exist(
+                [primary_metric, secondary_metric, *headline_metrics],
+                sampling_summary["metric"].astype(str).tolist(),
+                "sampling",
+            )
+            sampling_table = build_sampling_table(
+                sampling_summary,
+                sampling_variability_summary,
+                row_key="slice_count",
+                metrics=headline_metrics,
+                row_label=text("row_slices"),
+            )
+            write_dataframe_csv(os.path.join(summary_dir, "sampling_table.csv"), sampling_table)
+            sampling_tex = os.path.join(table_dir, "sampling_table.tex")
+            write_dataframe_latex(sampling_tex, sampling_table)
+            generated_table_paths.append(sampling_tex)
+            save_sampling_plot(
+                sampling_summary,
+                sampling_variability_summary,
+                primary_metric=primary_metric,
+                out_path=plot_output_path(plot_dir, "sampling_stability"),
+            )
+
+    if "sensitivity" in studies:
+        sensitivity_summary = read_dataframe_csv_if_exists(os.path.join(summary_dir, "sensitivity_summary_long.csv"))
+        if sensitivity_summary is not None and not sensitivity_summary.empty:
+            ensure_metric_names_exist(
+                ["stability_ratio_missing", "stability_ratio_all", "output_delta_rmse_missing"],
+                sensitivity_summary["metric"].astype(str).tolist(),
+                "sensitivity",
+            )
+            sensitivity_table = build_formatted_metric_table(
+                sensitivity_summary,
+                row_key="noise_std",
+                metrics=["stability_ratio_missing", "stability_ratio_all", "output_delta_rmse_missing"],
+                row_label=text("row_noise_std"),
+            )
+            write_dataframe_csv(os.path.join(summary_dir, "sensitivity_table.csv"), sensitivity_table)
+            sensitivity_tex = os.path.join(table_dir, "sensitivity_table.tex")
+            write_dataframe_latex(sensitivity_tex, sensitivity_table)
+            generated_table_paths.append(sensitivity_tex)
+            save_sensitivity_plot(
+                sensitivity_summary,
+                out_path=plot_output_path(plot_dir, "sensitivity_stability"),
+            )
+
+    if "robustness" in studies:
+        robustness_frame = read_dataframe_csv_if_exists(os.path.join(raw_dir, "robustness_per_case.csv"))
+        robustness_summary = read_dataframe_csv_if_exists(os.path.join(summary_dir, "robustness_summary_long.csv"))
+        if robustness_frame is not None and not robustness_frame.empty and robustness_summary is not None and not robustness_summary.empty:
+            ensure_metric_names_exist(
+                [primary_metric, *headline_metrics],
+                robustness_summary["metric"].astype(str).tolist(),
+                "robustness",
+            )
+            robustness_table = build_formatted_metric_table(
+                robustness_summary,
+                row_key="model_label",
+                metrics=headline_metrics,
+                row_label=text("row_checkpoint"),
+            )
+            write_dataframe_csv(os.path.join(summary_dir, "robustness_table.csv"), robustness_table)
+            robustness_tex = os.path.join(table_dir, "robustness_table.tex")
+            write_dataframe_latex(robustness_tex, robustness_table)
+            generated_table_paths.append(robustness_tex)
+            save_robustness_plot(
+                robustness_frame,
+                robustness_summary,
+                primary_metric=primary_metric,
+                out_path=plot_output_path(plot_dir, "robustness_primary_metric"),
+            )
+
+    save_overview_plot(
+        out_path=plot_output_path(plot_dir, "thesis_overview"),
+        convergence_summary=convergence_summary,
+        noise_summary=noise_summary,
+        sampling_variability_summary=sampling_variability_summary,
+        sensitivity_summary=sensitivity_summary,
+        primary_metric=primary_metric,
+    )
+    combine_latex_tables(table_dir, generated_table_paths)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--data", type=str, required=True)
-    ap.add_argument("--weights", type=str, required=True)
+    ap.add_argument("--data", type=str, default="")
+    ap.add_argument("--weights", type=str, default="")
     ap.add_argument("--out", type=str, default="./runs/regularization_behavior")
+    ap.add_argument("--render_only", action="store_true")
+    ap.add_argument("--language", type=str, default="en", choices=["en", "de"])
     ap.add_argument("--model", type=str, default="partial", choices=["baseline", "gated", "partial"])
     ap.add_argument("--dim", type=int, default=64)
     ap.add_argument("--init_feat", type=int, default=32)
@@ -1070,9 +1328,28 @@ def main() -> None:
     ap.add_argument("--secondary_metric", type=str, default="ssim_all")
     args = ap.parse_args()
 
+    set_language(args.language)
     configure_plot_style()
 
+    existing_config: Dict[str, Any] | None = None
+    existing_config_path = os.path.join(args.out, "study_config.json")
+    if args.render_only and os.path.exists(existing_config_path):
+        with open(existing_config_path, "r", encoding="utf-8") as handle:
+            loaded = json.load(handle)
+        if isinstance(loaded, dict):
+            existing_config = loaded
+
     studies = ordered_unique(args.studies)
+    if args.render_only and existing_config is not None:
+        if args.studies == list(DEFAULT_STUDIES) and isinstance(existing_config.get("studies"), list):
+            studies = ordered_unique(existing_config["studies"])
+        if args.headline_metrics == list(DEFAULT_HEADLINE_METRICS) and isinstance(existing_config.get("headline_metrics"), list):
+            args.headline_metrics = list(existing_config["headline_metrics"])
+        if args.primary_metric == "rmse_missing" and existing_config.get("primary_metric"):
+            args.primary_metric = str(existing_config["primary_metric"])
+        if args.secondary_metric == "ssim_all" and existing_config.get("secondary_metric"):
+            args.secondary_metric = str(existing_config["secondary_metric"])
+
     convergence_slices = validate_positive_int_list(args.convergence_slices, "--convergence_slices")
     noise_levels = validate_nonnegative_float_list(args.noise_levels, "--noise_levels")
     sampling_slices = validate_positive_int_list(args.sampling_slices, "--sampling_slices")
@@ -1082,6 +1359,12 @@ def main() -> None:
     )
     headline_metrics = ordered_unique(args.headline_metrics)
 
+    if not args.render_only:
+        if not str(args.data).strip():
+            raise ValueError("--data is required unless --render_only is used.")
+        if not str(args.weights).strip():
+            raise ValueError("--weights is required unless --render_only is used.")
+
     ensure_dir(args.out)
     raw_dir = os.path.join(args.out, "raw")
     summary_dir = os.path.join(args.out, "summary")
@@ -1089,6 +1372,20 @@ def main() -> None:
     plot_dir = os.path.join(args.out, "plots")
     for path in (raw_dir, summary_dir, table_dir, plot_dir):
         ensure_dir(path)
+
+    if args.render_only:
+        render_outputs_from_existing(
+            out_dir=args.out,
+            studies=studies,
+            headline_metrics=headline_metrics,
+            primary_metric=args.primary_metric,
+            secondary_metric=args.secondary_metric,
+        )
+        print("Re-rendered empirical regularization artifacts from existing data.")
+        print(f"Studies: {', '.join(studies)}")
+        print(f"Language: {args.language}")
+        print(f"Output: {normalize_case_path(args.out)}")
+        return
 
     selected_files, split_manifest = resolve_selected_files(args)
     if split_manifest is not None:
@@ -1152,7 +1449,7 @@ def main() -> None:
             convergence_summary,
             row_key="slice_count",
             metrics=headline_metrics,
-            row_label="Slices",
+            row_label=text("row_slices"),
         )
         write_dataframe_csv(os.path.join(summary_dir, "convergence_table.csv"), convergence_table)
         convergence_tex = os.path.join(table_dir, "convergence_table.tex")
@@ -1162,11 +1459,11 @@ def main() -> None:
         save_dual_metric_plot(
             convergence_summary,
             x_col="slice_count",
-            x_label="Number of slices",
+            x_label=text("x_slices"),
             primary_metric=args.primary_metric,
             secondary_metric=args.secondary_metric,
-            title_prefix="Information convergence",
-            out_path=os.path.join(plot_dir, "convergence_dual_metrics.png"),
+            title_prefix=text("title_information_convergence"),
+            out_path=plot_output_path(plot_dir, "convergence_dual_metrics"),
         )
         study_index["convergence"] = {
             "raw_csv": normalize_case_path(os.path.join(raw_dir, "convergence_per_case.csv")),
@@ -1202,7 +1499,7 @@ def main() -> None:
             noise_summary,
             row_key="noise_std",
             metrics=headline_metrics,
-            row_label="Noise std",
+            row_label=text("row_noise_std"),
         )
         write_dataframe_csv(os.path.join(summary_dir, "noise_table.csv"), noise_table)
         noise_tex = os.path.join(table_dir, "noise_table.tex")
@@ -1212,11 +1509,11 @@ def main() -> None:
         save_dual_metric_plot(
             noise_summary,
             x_col="noise_std",
-            x_label="Input noise std",
+            x_label=text("x_noise_std"),
             primary_metric=args.primary_metric,
             secondary_metric=args.secondary_metric,
-            title_prefix="Noise stability",
-            out_path=os.path.join(plot_dir, "noise_dual_metrics.png"),
+            title_prefix=text("title_noise_stability"),
+            out_path=plot_output_path(plot_dir, "noise_dual_metrics"),
         )
         study_index["noise"] = {
             "raw_csv": normalize_case_path(os.path.join(raw_dir, "noise_per_case.csv")),
@@ -1266,7 +1563,7 @@ def main() -> None:
             sampling_variability_summary,
             row_key="slice_count",
             metrics=headline_metrics,
-            row_label="Slices",
+            row_label=text("row_slices"),
         )
         write_dataframe_csv(os.path.join(summary_dir, "sampling_table.csv"), sampling_table)
         sampling_tex = os.path.join(table_dir, "sampling_table.tex")
@@ -1277,7 +1574,7 @@ def main() -> None:
             sampling_summary,
             sampling_variability_summary,
             primary_metric=args.primary_metric,
-            out_path=os.path.join(plot_dir, "sampling_stability.png"),
+            out_path=plot_output_path(plot_dir, "sampling_stability"),
         )
         study_index["sampling"] = {
             "raw_csv": normalize_case_path(os.path.join(raw_dir, "sampling_per_case.csv")),
@@ -1317,7 +1614,7 @@ def main() -> None:
             sensitivity_summary,
             row_key="noise_std",
             metrics=["stability_ratio_missing", "stability_ratio_all", "output_delta_rmse_missing"],
-            row_label="Noise std",
+            row_label=text("row_noise_std"),
         )
         write_dataframe_csv(os.path.join(summary_dir, "sensitivity_table.csv"), sensitivity_table)
         sensitivity_tex = os.path.join(table_dir, "sensitivity_table.tex")
@@ -1326,7 +1623,7 @@ def main() -> None:
 
         save_sensitivity_plot(
             sensitivity_summary,
-            out_path=os.path.join(plot_dir, "sensitivity_stability.png"),
+            out_path=plot_output_path(plot_dir, "sensitivity_stability"),
         )
         study_index["sensitivity"] = {
             "raw_csv": normalize_case_path(os.path.join(raw_dir, "sensitivity_per_case.csv")),
@@ -1365,7 +1662,7 @@ def main() -> None:
                 robustness_summary,
                 row_key="model_label",
                 metrics=headline_metrics,
-                row_label="Checkpoint",
+                row_label=text("row_checkpoint"),
             )
             write_dataframe_csv(os.path.join(summary_dir, "robustness_table.csv"), robustness_table)
             robustness_tex = os.path.join(table_dir, "robustness_table.tex")
@@ -1376,7 +1673,7 @@ def main() -> None:
                 robustness_frame,
                 robustness_summary,
                 primary_metric=args.primary_metric,
-                out_path=os.path.join(plot_dir, "robustness_primary_metric.png"),
+                out_path=plot_output_path(plot_dir, "robustness_primary_metric"),
             )
             study_index["robustness"] = {
                 "raw_csv": normalize_case_path(os.path.join(raw_dir, "robustness_per_case.csv")),
@@ -1387,7 +1684,7 @@ def main() -> None:
             study_index["robustness"] = {"skipped": "Need at least two --robustness_weights."}
 
     save_overview_plot(
-        out_path=os.path.join(plot_dir, "thesis_overview.png"),
+        out_path=plot_output_path(plot_dir, "thesis_overview"),
         convergence_summary=convergence_summary,
         noise_summary=noise_summary,
         sampling_variability_summary=sampling_variability_summary,
