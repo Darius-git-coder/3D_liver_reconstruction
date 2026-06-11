@@ -1,0 +1,30 @@
+﻿{
+    "repository_role":  "Curated thesis companion artifacts",
+    "sections":  [
+                     {
+                         "name":  "ablation",
+                         "thesis_context":  "Chapter 7 model selection",
+                         "path":  "results/ablation"
+                     },
+                     {
+                         "name":  "splits",
+                         "thesis_context":  "Chapter 6 data partitioning and reproducibility",
+                         "path":  "results/splits"
+                     },
+                     {
+                         "name":  "regularization",
+                         "thesis_context":  "Chapter 7 empirical regularization analysis",
+                         "path":  "results/regularization"
+                     },
+                     {
+                         "name":  "ultrasound_probe",
+                         "thesis_context":  "Chapter 7 controlled ultrasound-like finetuning study",
+                         "path":  "results/ultrasound_probe"
+                     },
+                     {
+                         "name":  "slice_distribution",
+                         "thesis_context":  "Appendix comparison against the regression baseline",
+                         "path":  "results/slice_distribution"
+                     }
+                 ]
+}

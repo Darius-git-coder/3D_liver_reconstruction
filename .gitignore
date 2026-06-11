@@ -2,6 +2,7 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
+*.log
 
 .pytest_cache/
 .mypy_cache/
@@ -12,11 +13,13 @@ htmlcov/
 .venv/
 venv/
 env/
+data/
 
 runs/
 outputs/
 *.pt
 *.pth
+configs/*.local*.json
 
 .DS_Store
 Thumbs.db

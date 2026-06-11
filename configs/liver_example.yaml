@@ -1,5 +1,5 @@
 project:
-  exp_name: "liver_inpainting_partial"
+  exp_name: "liver_sparse_reconstruction_core"
   runs_root: "./runs"
   timestamped_runs: true
   python_exe: ""
@@ -7,9 +7,9 @@ project:
   seed: 1337
 
 paths:
-  data_glob: "./data/preprocessed_liver_ct_64/*.nii.gz"
-  volume_for_invariance: "./data/preprocessed_liver_ct_64/example_case.nii.gz"
-  split_file: "./runs/splits/liver_seed1337_split.json"
+  data_glob: "./data/pipeline_preprocessed_data_128/*.nii.gz"
+  volume_for_invariance: "./data/pipeline_preprocessed_data_128/example_case.nii.gz"
+  split_file: "./runs/splits/liver_seed1337_split_128.json"
 
 split:
   script: "scripts/create_data_split.py"
@@ -19,16 +19,17 @@ split:
 
 train:
   script: "scripts/train_inpainting.py"
-  model: "partial"
-  dim: 64
-  epochs: 500
+  model: "baseline"
+  dim: 128
+  epochs: 150
   batch: 2
   lr: 1e-4
   wd: 5e-6
+  init_feat: 32
   slices_min: 8
-  slices_max: 64
-  slice_sampling: "uniform"
-  slice_mean: null
+  slices_max: 128
+  slice_sampling: "normal"
+  slice_mean: 64.0
   slice_std: null
   hole_weight: 30.0
   valid_weight: 1.0
@@ -37,42 +38,81 @@ train:
   w_ssim: 0.0
   w_ms_ssim: 0.2
   sparse_noise_std: 0.0
-  intensity_aug_prob: 0.0
+  intensity_aug_prob: 0.8
   intensity_scale_min: 0.85
   intensity_scale_max: 1.15
   intensity_bias_min: -0.05
   intensity_bias_max: 0.05
   thickness_vox: 1.0
-  split_file: "./runs/splits/liver_seed1337_split.json"
+  split_file: "./runs/splits/liver_seed1337_split_128.json"
   train_split: "train"
   val_split: "val"
   hard_constraint: true
   amp: true
   deterministic: true
+  curriculum: true
+  curriculum_stage_epochs: 35
   resume: ""
 
 eval:
   script: "scripts/evaluate_inpainting.py"
-  model: "partial"
-  dim: 64
-  batch: 2
-  split_file: "./runs/splits/liver_seed1337_split.json"
+  model: "baseline"
+  dim: 128
+  batch: 1
+  init_feat: 32
+  split_file: "./runs/splits/liver_seed1337_split_128.json"
   split: "test"
+  slices: 64
+  thickness_vox: 1.0
   hard_constraint: true
-  weights: ""
+  weights: "./runs/ablation_final_128/standard_unet3d_no_partialconv/train/best_model.pt"
 
 invariance:
   script: "scripts/invariance_test.py"
-  dim: 64
+  dim: 128
   slices: 64
   thickness_vox: 1.0
-  weights: ""
+  weights: "./runs/ablation_final_128/standard_unet3d_no_partialconv/train/best_model.pt"
 
-plot:
-  history_file: "history.json"
+regularization:
+  script: "scripts/evaluate_regularization_behavior.py"
+  out: "./runs/ablation_final_128/standard_unet3d_no_partialconv/thesis_regularization_full"
+  studies:
+    - "convergence"
+    - "noise"
+    - "sampling"
+    - "sensitivity"
+    - "robustness"
+  fixed_sampling_strategy: "fibonacci"
+  convergence_slices: [4, 8, 16, 32, 64, 128]
+  noise_slices: 64
+  noise_levels: [0.0, 0.01, 0.02, 0.05]
+  sampling_slices: [4, 8, 16, 32, 64, 128]
+  sampling_repeats: 8
+  sensitivity_slices: 64
+  sensitivity_noise_levels: [0.005, 0.01, 0.02]
+  robustness_slices: 64
+  headline_metrics: ["rmse_missing", "ssim_all"]
+
+ultrasound_probe:
+  finetune_script: "scripts/finetune_ultrasound_distribution.py"
+  eval_script: "scripts/evaluate_ultrasound_distribution.py"
+  export_script: "scripts/export_thesis_multislice_qualitative_figures.py"
+  slice_geometry: "ultrasound_probe"
+  slices: 64
+  epochs: 50
+  batch: 2
+  lr: 5e-5
+  wd: 5e-6
+  slice_axis_jitter_deg: 20.0
+  slice_fan_half_angle_deg: 30.0
+  slice_elevation_jitter_deg: 5.0
+  slice_sweep_jitter_deg: 2.0
+  probe_pos_sigma_vox: 1.0
+  probe_depth_sigma_vox: 6.0
+  probe_tilt_sigma: 0.08
+  num_eval_seeds: 5
 
 suite:
   script: "scripts/run_experiment_suite.py"
-  smoke_config: "configs/ablation_smoke.example.json"
-  short_config: "configs/ablation_short.example.json"
   final_config: "configs/ablation_final.example.json"

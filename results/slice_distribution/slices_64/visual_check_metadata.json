@@ -1,0 +1,48 @@
+﻿{
+  "volume": "liver_10.nii.gz",
+  "weights": "runs\\liver_inpainting_partial\\20260508_072434_newloss_dim128\\best_model.pt",
+  "run_dir": "runs\\liver_inpainting_partial\\20260508_072434_newloss_dim128",
+  "inference_used": true,
+  "model": "partial",
+  "dim": 128,
+  "slices": 64,
+  "slice_mode": "random",
+  "thickness_vox": 1.0,
+  "seed": 11,
+  "device": "cuda",
+  "center_zyx": [
+    50.85206985473633,
+    77.70453643798828,
+    58.138572692871094
+  ],
+  "hit_voxels": 1384125,
+  "hit_fraction": 0.6600022315979004,
+  "hits_max": 64.0,
+  "metrics": {
+    "known_mask_fraction": 0.6600022315979004,
+    "known_nonzero_fraction": 0.08475208282470703,
+    "tissue_voxel_count": 198091,
+    "prediction_mae_tissue": 0.005009685177356005,
+    "prediction_rmse_tissue": 0.019207727164030075,
+    "prediction_max_error_tissue": 0.4327511787414551
+  },
+  "prediction_summary": {
+    "raw_min": 0.0,
+    "raw_mean": 0.03618214279413223,
+    "raw_max": 0.4602866768836975,
+    "completed_min": 0.0,
+    "completed_mean": 0.03565773367881775,
+    "completed_max": 0.5832093358039856,
+    "known_constraint_mae": 0.0,
+    "missing_mean": 0.013867559842765331,
+    "missing_max": 0.42391353845596313,
+    "foreground_missing_mae": 0.035900916904211044,
+    "foreground_missing_rmse": 0.05141900107264519
+  },
+  "load_info": {
+    "strict": true,
+    "missing_keys": [],
+    "unexpected_keys": []
+  },
+  "pyvista_written": false
+}

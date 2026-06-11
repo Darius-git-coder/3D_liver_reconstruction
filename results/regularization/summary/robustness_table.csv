@@ -1,0 +1,3 @@
+Checkpoint,RMSE fehlende Voxel,SSIM Gesamtvolumen
+best_model,0.0083 $\pm$ 0.0016,0.9092 $\pm$ 0.0014
+last_checkpoint,0.0083 $\pm$ 0.0016,0.9092 $\pm$ 0.0014

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "liver-sparse-reconstruction-core"
 version = "0.1.0"
-description = "Core CT-based sparse-to-dense 3D liver reconstruction pipeline"
+description = "Companion code and curated artifacts for a bachelor thesis on sparse 3D liver reconstruction from CT"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

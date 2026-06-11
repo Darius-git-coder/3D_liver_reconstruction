@@ -38,7 +38,7 @@ DEFAULT_MARGIN = 5
 DEFAULT_PADDING = 10
 DEFAULT_PRE_PAD = 50
 DEFAULT_TARGET_DIM = 128
-DEFAULT_OUTPUT_ROOT = Path(r"E:\Bachelorarbeit_Daten")
+DEFAULT_OUTPUT_ROOT = Path("./data")
 
 
 def load_nifti_volume(file_path: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray]:

@@ -1,0 +1,6 @@
+﻿variant,mae_missing,rmse_missing,psnr_missing,rmse_all,ssim_all
+Standard-UNet ohne partielle Faltungen,0.00114,0.00992,40.7060,0.00581,0.90826
+PartialResUNet vollstaendig,0.00153,0.01201,38.9331,0.00704,0.90690
+PartialResUNet ohne Hard-Constraint,0.00158,0.01218,38.6987,0.01577,0.88351
+PartialResUNet ohne Gradiententerm,0.00156,0.01192,38.9606,0.00698,0.90687
+PartialResUNet ohne MS-SSIM-Term,0.00157,0.01236,38.5520,0.00724,0.90691
