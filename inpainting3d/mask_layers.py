@@ -9,14 +9,7 @@ import torch.nn.functional as F
 
 class PartialConv3d(nn.Module):
     """
-    3D Partial Convolution:
-    - Input wird mit Maske multipliziert
-    - Ausgabe wird nach Anzahl valid Voxels im Kernel renormalisiert
-    - Maske wird pro Layer aktualisiert (mask_out = 1 wenn mind. 1 valid im Kernel)
-
-    Erwartet:
-      x    : [B, C, D, H, W]
-      mask : [B, 1, D, H, W] (1=valid/known, 0=missing)
+    Apply a 3D partial convolution and propagate an updated validity mask.
     """
     def __init__(
         self,
@@ -29,6 +22,28 @@ class PartialConv3d(nn.Module):
         bias: bool = True,
         eps: float = 1e-8,
     ):
+        """
+        Initialize the partial 3D convolution layer.
+        
+        Parameters
+        ----------
+        in_channels : int
+            Number of input feature channels.
+        out_channels : int
+            Number of output feature channels.
+        kernel_size : int
+            Convolution kernel size. Defaults to 3.
+        stride : int
+            Convolution stride. Defaults to 1.
+        padding : int
+            Convolution padding. Defaults to 1.
+        dilation : int
+            Convolution dilation. Defaults to 1.
+        bias : bool
+            Whether the convolution uses a learnable bias. Defaults to True.
+        eps : float
+            Small constant that avoids division by zero. Defaults to 1e-8.
+        """
         super().__init__()
         self.conv = nn.Conv3d(
             in_channels, out_channels,
@@ -50,6 +65,21 @@ class PartialConv3d(nn.Module):
         self.kernel_volume = float(k * k * k)
 
     def forward(self, x: torch.Tensor, mask: Optional[torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Apply the partial convolution to an input tensor and mask.
+        
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor or array.
+        mask : Optional[torch.Tensor]
+            Binary mask that marks valid or selected voxels.
+        
+        Returns
+        -------
+        Tuple[torch.Tensor, torch.Tensor]
+            Output produced by the model or workflow.
+        """
         if mask is None:
             mask = torch.ones((x.shape[0], 1, *x.shape[2:]), device=x.device, dtype=x.dtype)
 
@@ -96,24 +126,21 @@ class PartialConv3d(nn.Module):
         return out, new_mask
 
 
-class GatedConv3d(nn.Module):
-    """
-    3D Gated Convolution:
-    y = feature_conv(x) * sigmoid(gate_conv(x))
-    """
-    def __init__(self, in_ch: int, out_ch: int, k: int = 3, p: int = 1, s: int = 1):
-        super().__init__()
-        self.feature = nn.Conv3d(in_ch, out_ch, kernel_size=k, stride=s, padding=p)
-        self.gate = nn.Conv3d(in_ch, out_ch, kernel_size=k, stride=s, padding=p)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        feat = self.feature(x)
-        gate = torch.sigmoid(self.gate(x))
-        return feat * gate
-
-
 class PartialResidualBlock3D(nn.Module):
+    """
+    Apply two partial convolution layers with a residual shortcut.
+    """
     def __init__(self, in_f: int, out_f: int):
+        """
+        Initialize the partial residual block.
+        
+        Parameters
+        ----------
+        in_f : int
+            Number of input feature channels.
+        out_f : int
+            Number of output feature channels.
+        """
         super().__init__()
         self.c1 = PartialConv3d(in_f, out_f, kernel_size=3, padding=1)
         self.n1 = nn.InstanceNorm3d(out_f, affine=True)
@@ -124,6 +151,21 @@ class PartialResidualBlock3D(nn.Module):
         self.act = nn.LeakyReLU(0.2, inplace=True)
 
     def forward(self, x: torch.Tensor, mask: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Run the partial residual block on features and masks.
+        
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor or array.
+        mask : torch.Tensor
+            Binary mask that marks valid or selected voxels.
+        
+        Returns
+        -------
+        Tuple[torch.Tensor, torch.Tensor]
+            Output produced by the model or workflow.
+        """
         y, m = self.c1(x, mask)
         y = self.act(self.n1(y))
 
@@ -140,18 +182,3 @@ class PartialResidualBlock3D(nn.Module):
         return out, m_out
 
 
-class GatedResidualBlock3D(nn.Module):
-    def __init__(self, in_f: int, out_f: int):
-        super().__init__()
-        self.c1 = GatedConv3d(in_f, out_f, k=3, p=1)
-        self.n1 = nn.InstanceNorm3d(out_f, affine=True)
-        self.c2 = GatedConv3d(out_f, out_f, k=3, p=1)
-        self.n2 = nn.InstanceNorm3d(out_f, affine=True)
-
-        self.shortcut = nn.Conv3d(in_f, out_f, kernel_size=1) if in_f != out_f else nn.Identity()
-        self.act = nn.LeakyReLU(0.2, inplace=True)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        y = self.act(self.n1(self.c1(x)))
-        y = self.n2(self.c2(y))
-        return self.act(y + self.shortcut(x))

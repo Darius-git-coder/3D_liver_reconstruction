@@ -1,0 +1,29 @@
+{
+  "volume": "E:\\Bachelorarbeit_Daten\\pipeline_preprocessed_data_256\\liver_11.nii.gz",
+  "dim": 128,
+  "slice_count": 16,
+  "thickness_vox": 1.0,
+  "oriented_slices": {
+    "files": [
+      "C:\\Users\\dariu\\OneDrive\\Dokumente\\Uni\\Bachelor_Arbeit\\Python\\Test_Projekt\\liver-sparse-reconstruction\\results\\thesis_ct_method_figures\\figure_52_oriented_nonconsecutive_slices_ct.png",
+      "C:\\Users\\dariu\\OneDrive\\Dokumente\\Uni\\Bachelor_Arbeit\\Python\\Test_Projekt\\liver-sparse-reconstruction\\results\\thesis_ct_method_figures\\figure_52_oriented_nonconsecutive_slices_ct.pdf"
+    ]
+  },
+  "sparse_volume_known_mask": {
+    "files": [
+      "C:\\Users\\dariu\\OneDrive\\Dokumente\\Uni\\Bachelor_Arbeit\\Python\\Test_Projekt\\liver-sparse-reconstruction\\results\\thesis_ct_method_figures\\figure_53_sparse_volume_known_mask_ct.png",
+      "C:\\Users\\dariu\\OneDrive\\Dokumente\\Uni\\Bachelor_Arbeit\\Python\\Test_Projekt\\liver-sparse-reconstruction\\results\\thesis_ct_method_figures\\figure_53_sparse_volume_known_mask_ct.pdf"
+    ]
+  },
+  "hard_constraint": {
+    "files": [
+      "C:\\Users\\dariu\\OneDrive\\Dokumente\\Uni\\Bachelor_Arbeit\\Python\\Test_Projekt\\liver-sparse-reconstruction\\results\\thesis_ct_method_figures\\figure_56_hard_constraint_slice_ct.png",
+      "C:\\Users\\dariu\\OneDrive\\Dokumente\\Uni\\Bachelor_Arbeit\\Python\\Test_Projekt\\liver-sparse-reconstruction\\results\\thesis_ct_method_figures\\figure_56_hard_constraint_slice_ct.pdf"
+    ],
+    "plane": "coronal",
+    "index": 71
+  },
+  "num_known_voxels": 274244,
+  "num_sparse_nonzero_voxels": 38667,
+  "num_hit_voxels": 274244
+}

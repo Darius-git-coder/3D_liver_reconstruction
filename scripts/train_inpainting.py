@@ -30,7 +30,7 @@ from inpainting3d.data import (
 )
 from inpainting3d.losses import CombinedInpaintingLoss, CombinedLossConfig
 from inpainting3d.metrics import compute_metrics_per_case
-from inpainting3d.models import DeepResUNet3D, GatedResUNet3D, PartialResUNet3D
+from inpainting3d.models import DeepResUNet3D, PartialResUNet3D
 from inpainting3d.repro import build_repro_metadata, get_git_info
 from inpainting3d.splits import (
     case_id_from_path,
@@ -53,6 +53,9 @@ from inpainting3d.utils import (
 
 
 class LiverInpaintingDataset(Dataset):
+    """
+    Dataset for sparse-to-dense liver inpainting experiments.
+    """
     def __init__(
         self,
         files: List[str],
@@ -86,6 +89,72 @@ class LiverInpaintingDataset(Dataset):
         intensity_bias_max: float = 0.05,
         return_meta: bool = False,
     ):
+        """
+        Initialize the liver inpainting dataset.
+        
+        Parameters
+        ----------
+        files : List[str]
+            Sequence of input case files.
+        dim : int
+            Target cubic side length of the processed volume. Defaults to 64.
+        slices_min : int
+            Lower bound of the sampled slice count. Defaults to 4.
+        slices_max : int
+            Upper bound of the sampled slice count. Defaults to 32.
+        slice_sampling : str
+            Rule used to sample the number of slices. Defaults to "uniform".
+        slice_mean : float | None
+            Mean of the normal slice-count distribution. Defaults to None.
+        slice_std : float | None
+            Standard deviation of the normal slice-count distribution. Defaults to None.
+        slice_geometry : str
+            Geometry model used for sparse slice sampling. Defaults to "random".
+        slice_axis : Tuple[float, float, float] | None
+            Preferred axis used when sampling slice geometry. Defaults to None.
+        slice_axis_jitter_deg : float
+            Standard deviation of dominant-axis jitter in degrees. Defaults to 25.0.
+        slice_fan_half_angle_deg : float
+            Half opening angle of the sampled fan in degrees. Defaults to 35.0.
+        slice_elevation_jitter_deg : float
+            Standard deviation of out-of-plane jitter in degrees. Defaults to 6.0.
+        slice_sweep_jitter_deg : float
+            Standard deviation of in-plane sweep jitter in degrees. Defaults to 2.5.
+        probe_pos_sigma_vox : float
+            Standard deviation of probe-position jitter in voxels. Defaults to 1.0.
+        probe_depth_sigma_vox : float
+            Standard deviation of depth jitter in voxels. Defaults to 6.0.
+        probe_tilt_sigma : float
+            Standard deviation of probe tilt perturbations. Defaults to 0.08.
+        thickness_vox : float
+            Half thickness of each sampled slice plane in voxels. Defaults to 1.0.
+        canonical : bool
+            Whether the loaded image should be reoriented to canonical axes. Defaults to True.
+        normalize : str
+            Normalization mode applied to loaded volumes. Defaults to "clip01".
+        is_train : bool
+            Whether the dataset operates in training mode. Defaults to True.
+        seed : int
+            Random seed used for reproducible sampling. Defaults to 1337.
+        curriculum : bool
+            Whether curriculum learning is enabled for slice counts. Defaults to False.
+        curriculum_stage_epochs : int
+            Number of epochs assigned to each curriculum stage. Defaults to 50.
+        sparse_noise_std : float
+            Standard deviation of additive sparse-input noise. Defaults to 0.0.
+        intensity_aug_prob : float
+            Probability of applying intensity augmentation during training. Defaults to 0.0.
+        intensity_scale_min : float
+            Lower bound of multiplicative intensity augmentation. Defaults to 0.85.
+        intensity_scale_max : float
+            Upper bound of multiplicative intensity augmentation. Defaults to 1.15.
+        intensity_bias_min : float
+            Lower bound of additive intensity augmentation. Defaults to -0.05.
+        intensity_bias_max : float
+            Upper bound of additive intensity augmentation. Defaults to 0.05.
+        return_meta : bool
+            Whether dataset items should include metadata dictionaries. Defaults to False.
+        """
         self.files = list(files)
         self.dim = dim
         self.slices_min = slices_min
@@ -119,12 +188,41 @@ class LiverInpaintingDataset(Dataset):
         self.current_epoch = 0
 
     def __len__(self) -> int:
+        """
+        Return the number of available dataset items.
+        
+        Returns
+        -------
+        int
+            Number of available items.
+        """
         return len(self.files)
 
     def set_epoch(self, epoch: int) -> None:
+        """
+        Record the current training epoch for curriculum sampling.
+        
+        Parameters
+        ----------
+        epoch : int
+            Current training epoch.
+        
+        Returns
+        -------
+        None
+            This method updates the dataset state in place.
+        """
         self.current_epoch = int(epoch)
 
     def _slice_range(self) -> Tuple[int, int]:
+        """
+        Return the active slice-count range for the current epoch.
+        
+        Returns
+        -------
+        Tuple[int, int]
+            Inclusive lower and upper bounds of the active slice-count range.
+        """
         if not (self.is_train and self.curriculum):
             return self.slices_min, self.slices_max
         if self.current_epoch < self.curriculum_stage_epochs:
@@ -134,6 +232,19 @@ class LiverInpaintingDataset(Dataset):
         return self.slices_min, self.slices_max
 
     def _sample_num_slices(self, rng: np.random.Generator) -> int:
+        """
+        Sample the number of sparse slices for one case.
+        
+        Parameters
+        ----------
+        rng : np.random.Generator
+            Random number generator used for stochastic sampling.
+        
+        Returns
+        -------
+        int
+            Sampled num slices.
+        """
         slices_min, slices_max = self._slice_range()
         if self.slice_sampling == "normal":
             mean = self.slice_mean if self.slice_mean is not None else 0.5 * (slices_min + slices_max)
@@ -143,6 +254,19 @@ class LiverInpaintingDataset(Dataset):
         return int(rng.integers(slices_min, slices_max + 1))
 
     def __getitem__(self, idx: int):
+        """
+        Load and prepare one sparse-to-dense training sample.
+        
+        Parameters
+        ----------
+        idx : int
+            Zero-based index of the requested sample.
+        
+        Returns
+        -------
+        tuple
+            Prepared dataset sample, optionally followed by metadata.
+        """
         path = self.files[idx]
         vol, _aff = load_nifti_volume(path, canonical=self.canonical, dtype=np.float32)
         vol = normalize_volume(vol, self.normalize)
@@ -212,6 +336,25 @@ class LiverInpaintingDataset(Dataset):
 
 
 def save_sample_figure(x: torch.Tensor, y: torch.Tensor, pred: torch.Tensor, out_path: str) -> None:
+    """
+    Save a four-panel visualization of one training example.
+    
+    Parameters
+    ----------
+    x : torch.Tensor
+        Input tensor or array.
+    y : torch.Tensor
+        Reference tensor or array.
+    pred : torch.Tensor
+        Predicted reconstruction tensor or array.
+    out_path : str
+        Destination path for the written artifact.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     x0 = x[0, 0].detach().cpu().numpy()
     xm = x[0, 1].detach().cpu().numpy()
     yt = y[0, 0].detach().cpu().numpy()
@@ -240,6 +383,25 @@ def clamp_prediction(
     mask: torch.Tensor | None = None,
     hard_constraint: bool = True,
 ) -> torch.Tensor:
+    """
+    Clamp a prediction to the valid range and optionally enforce known voxels.
+    
+    Parameters
+    ----------
+    pred : torch.Tensor
+        Predicted reconstruction tensor or array.
+    sparse : torch.Tensor | None
+        Sparse observation tensor or array. Defaults to None.
+    mask : torch.Tensor | None
+        Binary mask that marks valid or selected voxels. Defaults to None.
+    hard_constraint : bool
+        Whether known voxels should be enforced exactly at the output. Defaults to True.
+    
+    Returns
+    -------
+    torch.Tensor
+        Clamped prediction tensor with optional hard-constraint enforcement.
+    """
     pred = torch.clamp(pred, 0.0, 1.0)
     if hard_constraint and sparse is not None and mask is not None:
         return finalize_inpainting_prediction(pred, sparse=sparse, known_mask=mask)
@@ -247,22 +409,67 @@ def clamp_prediction(
 
 
 def build_model(kind: str, init_feat: int = 32) -> torch.nn.Module:
+    """
+    Build a model instance for the requested architecture identifier.
+    
+    Parameters
+    ----------
+    kind : str
+        Architecture identifier used to build a model.
+    init_feat : int
+        Base number of feature channels in the first stage. Defaults to 32.
+    
+    Returns
+    -------
+    torch.nn.Module
+        Constructed object ready for downstream use.
+    """
     kind = kind.lower()
     if kind == "baseline":
         return DeepResUNet3D(in_channels=2, init_feat=init_feat)
-    if kind == "gated":
-        return GatedResUNet3D(in_channels=2, init_feat=init_feat)
     if kind == "partial":
         return PartialResUNet3D(init_feat=init_feat)
     raise ValueError(f"Unbekanntes model kind: {kind}")
 
 
 def save_json(path: str, payload: Dict[str, Any]) -> None:
+    """
+    Write a JSON document to disk.
+    
+    Parameters
+    ----------
+    path : str
+        Filesystem path to the input artifact.
+    payload : Dict[str, Any]
+        Structured data that will be serialized as JSON.
+    
+    Returns
+    -------
+    None
+        The JSON artifact is written to disk.
+    """
     with open(path, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2, ensure_ascii=False)
 
 
 def maybe_limit_cases(files: List[str], max_cases: int | None, split_name: str) -> List[str]:
+    """
+    Optionally limit the number of selected cases.
+    
+    Parameters
+    ----------
+    files : List[str]
+        Sequence of input case files.
+    max_cases : int | None
+        Requested max cases.
+    split_name : str
+        Name of the requested data split.
+    
+    Returns
+    -------
+    List[str]
+        Selected case paths after applying the optional limit.
+    """
     if max_cases is None:
         return files
     limit = int(max_cases)
@@ -272,6 +479,19 @@ def maybe_limit_cases(files: List[str], max_cases: int | None, split_name: str) 
 
 
 def prepare_data_splits(args: argparse.Namespace) -> Tuple[Dict[str, object], List[str], List[str], str | None]:
+    """
+    Resolve, validate, and optionally create data splits for training.
+    
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Arguments passed to the helper or command.
+    
+    Returns
+    -------
+    Tuple[Dict[str, object], List[str], List[str], str | None]
+        Split manifest, training files, validation files, and the originating split-file path when available.
+    """
     files = resolve_case_paths(args.data)
     if not files:
         raise RuntimeError("Keine Dateien gefunden.")
@@ -307,10 +527,18 @@ def prepare_data_splits(args: argparse.Namespace) -> Tuple[Dict[str, object], Li
 
 
 def main() -> None:
+    """
+    Execute the command-line entry point for this script.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", type=str, required=True, help="Glob-Pattern fuer *.nii.gz")
     ap.add_argument("--out", type=str, default="./runs/inpainting3d")
-    ap.add_argument("--model", type=str, default="partial", choices=["baseline", "gated", "partial"])
+    ap.add_argument("--model", type=str, default="partial", choices=["baseline", "partial"])
     ap.add_argument("--dim", type=int, default=64)
     ap.add_argument("--epochs", type=int, default=200)
     ap.add_argument("--batch", type=int, default=2)

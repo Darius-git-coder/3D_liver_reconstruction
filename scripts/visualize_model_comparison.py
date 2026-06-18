@@ -21,6 +21,23 @@ from scripts.train_inpainting import LiverInpaintingDataset, build_model, clamp_
 
 
 def resolve_eval_files(data_glob: str, split_file: str, split: str) -> List[str]:
+    """
+    Resolve the evaluation cases selected by the command-line arguments.
+    
+    Parameters
+    ----------
+    data_glob : str
+        Glob pattern used to discover input case files.
+    split_file : str
+        Path to the split manifest file.
+    split : str
+        Name of the requested data split.
+    
+    Returns
+    -------
+    List[str]
+        Resolved value or selection.
+    """
     files = resolve_case_paths(data_glob)
     if not files:
         raise RuntimeError("Keine Dateien fuer das angegebene Daten-Glob gefunden.")
@@ -56,6 +73,57 @@ def load_case_sample(
     thickness_vox: float,
     seed: int,
 ) -> Tuple[torch.Tensor, torch.Tensor, Dict[str, Any]]:
+    """
+    Load the data sample associated with a reported evaluation case.
+    
+    Parameters
+    ----------
+    files : List[str]
+        Sequence of input case files.
+    case_id : str
+        Case identifier.
+    dim : int
+        Target cubic side length of the processed volume.
+    init_feat : int
+        Base number of feature channels in the first stage.
+    slices_min : int
+        Lower bound of the sampled slice count.
+    slices_max : int
+        Upper bound of the sampled slice count.
+    slice_sampling : str
+        Rule used to sample the number of slices.
+    slice_mean : float | None
+        Mean of the normal slice-count distribution.
+    slice_std : float | None
+        Standard deviation of the normal slice-count distribution.
+    slice_geometry : str
+        Geometry model used for sparse slice sampling.
+    slice_axis : List[float] | None
+        Preferred axis used when sampling slice geometry.
+    slice_axis_jitter_deg : float
+        Standard deviation of dominant-axis jitter in degrees.
+    slice_fan_half_angle_deg : float
+        Half opening angle of the sampled fan in degrees.
+    slice_elevation_jitter_deg : float
+        Standard deviation of out-of-plane jitter in degrees.
+    slice_sweep_jitter_deg : float
+        Standard deviation of in-plane sweep jitter in degrees.
+    probe_pos_sigma_vox : float
+        Standard deviation of probe-position jitter in voxels.
+    probe_depth_sigma_vox : float
+        Standard deviation of depth jitter in voxels.
+    probe_tilt_sigma : float
+        Standard deviation of probe tilt perturbations.
+    thickness_vox : float
+        Half thickness of each sampled slice plane in voxels.
+    seed : int
+        Random seed used for reproducible sampling.
+    
+    Returns
+    -------
+    Tuple[torch.Tensor, torch.Tensor, Dict[str, Any]]
+        Loaded data structure.
+    """
     dataset = LiverInpaintingDataset(
         files,
         dim=dim,
@@ -97,6 +165,29 @@ def run_prediction(
     hard_constraint: bool,
     device: torch.device,
 ) -> np.ndarray:
+    """
+    Run a model prediction for one loaded case.
+    
+    Parameters
+    ----------
+    x : torch.Tensor
+        Input tensor or array.
+    weights : str
+        Checkpoint path or weighting coefficients used by the helper.
+    model_kind : str
+        Architecture identifier used to build a model.
+    init_feat : int
+        Base number of feature channels in the first stage.
+    hard_constraint : bool
+        Whether known voxels should be enforced exactly at the output.
+    device : torch.device
+        Torch device on which tensors should be created or evaluated.
+    
+    Returns
+    -------
+    np.ndarray
+        Output produced by the model or workflow.
+    """
     model = build_model(model_kind, init_feat=init_feat).to(device)
     state = torch_load_weights_compat(weights, map_location=device)
     if isinstance(state, dict) and "model" in state and isinstance(state["model"], dict):
@@ -115,6 +206,23 @@ def run_prediction(
 
 
 def to_metrics(pred: np.ndarray, target: np.ndarray, mask: np.ndarray) -> Dict[str, float]:
+    """
+    Compute a compact metric dictionary for displayed predictions.
+    
+    Parameters
+    ----------
+    pred : np.ndarray
+        Predicted reconstruction tensor or array.
+    target : np.ndarray
+        Reference tensor or array used as supervision.
+    mask : np.ndarray
+        Binary mask that marks valid or selected voxels.
+    
+    Returns
+    -------
+    dict[str, float]
+        Compact metric dictionary for the provided prediction.
+    """
     pred_t = torch.from_numpy(pred[None, None]).float()
     target_t = torch.from_numpy(target[None, None]).float()
     mask_t = torch.from_numpy(mask[None, None]).float()
@@ -123,6 +231,19 @@ def to_metrics(pred: np.ndarray, target: np.ndarray, mask: np.ndarray) -> Dict[s
 
 
 def _views(vol: np.ndarray) -> List[Tuple[str, np.ndarray]]:
+    """
+    Return the set of orthogonal volume views used for visualization.
+    
+    Parameters
+    ----------
+    vol : np.ndarray
+        Input volume array.
+    
+    Returns
+    -------
+    List[Tuple[str, np.ndarray]]
+        Orthogonal view names paired with their 2D slices.
+    """
     mid_d = vol.shape[0] // 2
     mid_h = vol.shape[1] // 2
     mid_w = vol.shape[2] // 2
@@ -143,6 +264,31 @@ def save_multiview_predictions(
     label_a: str,
     label_b: str,
 ) -> None:
+    """
+    Save multi-view prediction figures.
+    
+    Parameters
+    ----------
+    gt : np.ndarray
+        Ground-truth tensor or array.
+    sparse : np.ndarray
+        Sparse observation tensor or array.
+    pred_a : np.ndarray
+        Prediction generated by the first model.
+    pred_b : np.ndarray
+        Prediction generated by the second model.
+    out_path : str
+        Destination path for the written artifact.
+    label_a : str
+        Display label of the first model or prediction.
+    label_b : str
+        Display label of the second model or prediction.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     gt_views = _views(gt)
     sparse_views = _views(sparse)
     a_views = _views(pred_a)
@@ -175,6 +321,29 @@ def save_multiview_errors(
     label_a: str,
     label_b: str,
 ) -> None:
+    """
+    Save multi-view error figures.
+    
+    Parameters
+    ----------
+    gt : np.ndarray
+        Ground-truth tensor or array.
+    pred_a : np.ndarray
+        Prediction generated by the first model.
+    pred_b : np.ndarray
+        Prediction generated by the second model.
+    out_path : str
+        Destination path for the written artifact.
+    label_a : str
+        Display label of the first model or prediction.
+    label_b : str
+        Display label of the second model or prediction.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     err_a = np.abs(gt - pred_a).astype(np.float32)
     err_b = np.abs(gt - pred_b).astype(np.float32)
     delta = err_a - err_b
@@ -210,6 +379,31 @@ def save_mip_comparison(
     label_a: str,
     label_b: str,
 ) -> None:
+    """
+    Save maximum-intensity-projection comparison figures.
+    
+    Parameters
+    ----------
+    gt : np.ndarray
+        Ground-truth tensor or array.
+    sparse : np.ndarray
+        Sparse observation tensor or array.
+    pred_a : np.ndarray
+        Prediction generated by the first model.
+    pred_b : np.ndarray
+        Prediction generated by the second model.
+    out_path : str
+        Destination path for the written artifact.
+    label_a : str
+        Display label of the first model or prediction.
+    label_b : str
+        Display label of the second model or prediction.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     projections = [
         ("Axial", lambda x: x.max(axis=0)),
         ("Coronal", lambda x: x.max(axis=1)),
@@ -235,6 +429,14 @@ def save_mip_comparison(
 
 
 def main() -> None:
+    """
+    Execute the command-line entry point for this script.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", type=str, required=True)
     ap.add_argument("--split_file", type=str, default="")
@@ -242,8 +444,8 @@ def main() -> None:
     ap.add_argument("--case_id", type=str, required=True)
     ap.add_argument("--weights_a", type=str, required=True)
     ap.add_argument("--weights_b", type=str, required=True)
-    ap.add_argument("--model_a", type=str, required=True, choices=["baseline", "gated", "partial"])
-    ap.add_argument("--model_b", type=str, required=True, choices=["baseline", "gated", "partial"])
+    ap.add_argument("--model_a", type=str, required=True, choices=["baseline", "partial"])
+    ap.add_argument("--model_b", type=str, required=True, choices=["baseline", "partial"])
     ap.add_argument("--label_a", type=str, default="Model A")
     ap.add_argument("--label_b", type=str, default="Model B")
     ap.add_argument("--out", type=str, required=True)

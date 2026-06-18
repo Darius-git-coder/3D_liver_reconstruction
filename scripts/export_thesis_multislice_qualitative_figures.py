@@ -37,6 +37,21 @@ from scripts.visualize_model_comparison import resolve_eval_files, to_metrics
 
 
 def save_json(path: str, payload: Dict[str, Any]) -> None:
+    """
+    Write a JSON document to disk.
+    
+    Parameters
+    ----------
+    path : str
+        Filesystem path to the input artifact.
+    payload : Dict[str, Any]
+        Structured data that will be serialized as JSON.
+    
+    Returns
+    -------
+    None
+        The JSON artifact is written to disk.
+    """
     with open(path, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2, ensure_ascii=False)
 
@@ -48,6 +63,25 @@ def run_prediction_cached(
     hard_constraint: bool,
     device: torch.device,
 ) -> Any:
+    """
+    Run a prediction and reuse cached outputs when available.
+    
+    Parameters
+    ----------
+    x : torch.Tensor
+        Input tensor or array.
+    model : torch.nn.Module
+        Model instance used for training, inference, or visualization.
+    hard_constraint : bool
+        Whether known voxels should be enforced exactly at the output.
+    device : torch.device
+        Torch device on which tensors should be created or evaluated.
+    
+    Returns
+    -------
+    Any
+        Output produced by the model or workflow.
+    """
     x_batched = x.unsqueeze(0).to(device)
     sparse = x_batched[:, 0:1, ...]
     mask = x_batched[:, 1:2, ...]
@@ -57,6 +91,14 @@ def run_prediction_cached(
 
 
 def main() -> None:
+    """
+    Execute the command-line entry point for this script.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--reference_eval_dir", type=str, required=True)
     ap.add_argument("--slices", type=int, nargs="+", required=True)

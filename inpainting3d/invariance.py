@@ -11,6 +11,16 @@ from scipy.ndimage import affine_transform
 
 @dataclass
 class PCATransform:
+    """
+    Store the rigid transform derived from PCA alignment.
+    
+    Attributes
+    ----------
+    R : np.ndarray
+        Rotation matrix that aligns the foreground principal axes.
+    center : np.ndarray
+        Center of rotation expressed in voxel coordinates.
+    """
     R: np.ndarray       # 3x3 Rotation
     center: np.ndarray  # 3,
 
@@ -22,12 +32,23 @@ def pca_align_stable(
     eig_gap_tol: float = 0.03,
 ) -> Tuple[np.ndarray, Optional[np.ndarray], Optional[PCATransform]]:
     """
-    PCA-basierte Ausrichtung mit Stabilitäts-Heuristik:
-    - Falls Eigenwerte nahe gleich (degeneriert): skip align (zu instabil)
-    - Determinant positiv (right-handed)
-    - Identische Transformation auf Maske (order=0)
-
-    Rückgabe: aligned_vol, aligned_mask, transform oder None
+    Align a volume with PCA when the foreground geometry is sufficiently stable.
+    
+    Parameters
+    ----------
+    vol : np.ndarray
+        Input volume array.
+    mask : Optional[np.ndarray]
+        Binary mask that marks valid or selected voxels. Defaults to None.
+    thr : float
+        Threshold used to define the foreground region. Defaults to 0.1.
+    eig_gap_tol : float
+        Minimum principal-eigenvalue gap required for stable PCA alignment. Defaults to 0.03.
+    
+    Returns
+    -------
+    Tuple[np.ndarray, Optional[np.ndarray], Optional[PCATransform]]
+        Aligned volume, aligned mask, and the applied transform when alignment is stable.
     """
     if mask is None:
         coords = np.argwhere(vol > thr)
@@ -75,6 +96,25 @@ def pca_align_stable(
 
 
 def apply_rotation(vol: np.ndarray, mask: np.ndarray, angle_deg: float, axes=(1, 2)) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Rotate a volume and its mask around the selected axes.
+    
+    Parameters
+    ----------
+    vol : np.ndarray
+        Input volume array.
+    mask : np.ndarray
+        Binary mask that marks valid or selected voxels.
+    angle_deg : float
+        Rotation angle in degrees.
+    axes : Any
+        Spatial axes around which the rotation is applied. Defaults to (1, 2).
+    
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        Transformed rotation.
+    """
     v = ndi_rotate(vol, angle=angle_deg, axes=axes, reshape=False, order=1, mode="constant", cval=0.0)
     m = ndi_rotate(mask, angle=angle_deg, axes=axes, reshape=False, order=0, mode="constant", cval=0.0)
     m = (m > 0.5).astype(np.float32)
@@ -82,6 +122,23 @@ def apply_rotation(vol: np.ndarray, mask: np.ndarray, angle_deg: float, axes=(1,
 
 
 def apply_translation(vol: np.ndarray, mask: np.ndarray, shift_xyz: Sequence[float]) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Translate a volume and its mask by the requested voxel offset.
+    
+    Parameters
+    ----------
+    vol : np.ndarray
+        Input volume array.
+    mask : np.ndarray
+        Binary mask that marks valid or selected voxels.
+    shift_xyz : Sequence[float]
+        Voxel translation applied along the three spatial axes.
+    
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        Transformed translation.
+    """
     v = ndi_shift(vol, shift=shift_xyz, order=1, mode="constant", cval=0.0)
     m = ndi_shift(mask, shift=shift_xyz, order=0, mode="constant", cval=0.0)
     m = (m > 0.5).astype(np.float32)
@@ -89,5 +146,24 @@ def apply_translation(vol: np.ndarray, mask: np.ndarray, shift_xyz: Sequence[flo
 
 
 def apply_intensity(vol: np.ndarray, mask: np.ndarray, a: float, b: float) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Apply an affine intensity transform to a volume.
+    
+    Parameters
+    ----------
+    vol : np.ndarray
+        Input volume array.
+    mask : np.ndarray
+        Binary mask that marks valid or selected voxels.
+    a : float
+        Multiplicative factor of the affine intensity transform.
+    b : float
+        Additive offset of the affine intensity transform.
+    
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        Transformed intensity.
+    """
     v = np.clip(a * vol + b, 0.0, 1.0).astype(np.float32)
     return v, mask.astype(np.float32)

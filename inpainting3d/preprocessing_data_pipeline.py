@@ -14,7 +14,19 @@ DEFAULT_TARGET_DIM = 64
 
 
 def load_nifti_volume(file_path: str | Path) -> tuple[np.ndarray, np.ndarray, np.ndarray, nib.Nifti1Header]:
-    """Load a NIfTI volume and convert it to canonical orientation."""
+    """
+    Load a NIfTI volume and return its image data.
+    
+    Parameters
+    ----------
+    file_path : str | Path
+        Filesystem path to the input file.
+    
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray, np.ndarray, nib.Nifti1Header]
+        Loaded data structure.
+    """
     nii = nib.load(str(file_path))
     nii = nib.as_closest_canonical(nii)
     volume = nii.get_fdata().astype(np.float32)
@@ -28,7 +40,25 @@ def normalize_ct_volume(
     min_hu: float = -100.0,
     max_hu: float = 400.0,
 ) -> np.ndarray:
-    """Apply CT windowing and normalize intensities to [0, 1]."""
+    """
+    Window CT intensities and map them into the unit interval.
+    
+    Parameters
+    ----------
+    volume : np.ndarray
+        Input volume array.
+    mask : np.ndarray | None
+        Binary mask that marks valid or selected voxels. Defaults to None.
+    min_hu : float
+        Lower CT window bound in Hounsfield units. Defaults to -100.0.
+    max_hu : float
+        Upper CT window bound in Hounsfield units. Defaults to 400.0.
+    
+    Returns
+    -------
+    np.ndarray
+        Processed volume data.
+    """
     img = np.clip(volume, min_hu, max_hu)
     img = (img - min_hu) / max(max_hu - min_hu, 1e-8)
     if mask is not None:
@@ -37,7 +67,21 @@ def normalize_ct_volume(
 
 
 def pca_align_volume(volume: np.ndarray, threshold: float = 0.1) -> np.ndarray:
-    """Align the object using principal axes when enough foreground is present."""
+    """
+    Align a foreground object with its principal axes.
+    
+    Parameters
+    ----------
+    volume : np.ndarray
+        Input volume array.
+    threshold : float
+        Threshold used to define the foreground region. Defaults to 0.1.
+    
+    Returns
+    -------
+    np.ndarray
+        PCA-aligned volume.
+    """
     coords = np.argwhere(volume > threshold)
     if coords.shape[0] < 10:
         return volume.astype(np.float32)
@@ -60,7 +104,25 @@ def crop_and_pad_volume(
     margin: int = 5,
     padding: int = 10,
 ) -> np.ndarray:
-    """Crop to the foreground support and add a safety padding."""
+    """
+    Crop a volume to its foreground support and add padding.
+    
+    Parameters
+    ----------
+    volume : np.ndarray
+        Input volume array.
+    threshold : float
+        Threshold used to define the foreground region. Defaults to 0.1.
+    margin : int
+        Margin added around the detected foreground support. Defaults to 5.
+    padding : int
+        Convolution padding. Defaults to 10.
+    
+    Returns
+    -------
+    np.ndarray
+        Cropped and padded volume.
+    """
     mask = volume > threshold
     coords = np.argwhere(mask)
     if coords.size == 0:
@@ -85,7 +147,21 @@ def crop_and_pad_volume(
 
 
 def resample_isometric(img: np.ndarray, target_dim: int = 256) -> tuple[np.ndarray, dict[str, object]]:
-    """Scale isometrically and embed the result into a cubic target volume."""
+    """
+    Scale a volume isometrically into a cubic target grid.
+    
+    Parameters
+    ----------
+    img : np.ndarray
+        Input image or volume array.
+    target_dim : int
+        Target cubic side length of the processed volume. Defaults to 256.
+    
+    Returns
+    -------
+    tuple[np.ndarray, dict[str, object]]
+        Resampled isometric.
+    """
     target_shape = (target_dim, target_dim, target_dim)
     scale_factor = min(t / s for t, s in zip(target_shape, img.shape))
     img_rescaled = zoom(img, scale_factor, order=1)
@@ -115,6 +191,31 @@ def process_dataset(
     padding: int = 10,
     pca_pad: int = 50,
 ) -> None:
+    """
+    Preprocess a dataset of liver volumes into the target representation.
+    
+    Parameters
+    ----------
+    input_dir : str | Path
+        Directory that contains the input data.
+    output_dir : str | Path
+        Directory where processed outputs are written.
+    target_dim : int
+        Target cubic side length of the processed volume. Defaults to DEFAULT_TARGET_DIM.
+    threshold : float
+        Threshold used to define the foreground region. Defaults to DEFAULT_THRESHOLD.
+    margin : int
+        Margin added around the detected foreground support. Defaults to 5.
+    padding : int
+        Convolution padding. Defaults to 10.
+    pca_pad : int
+        Amount of zero padding added before PCA alignment. Defaults to 50.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     input_path = Path(input_dir)
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -151,6 +252,14 @@ def process_dataset(
 
 
 def main() -> None:
+    """
+    Execute the command-line entry point for this script.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     parser = argparse.ArgumentParser(description="Preprocess liver CT volumes for sparse-to-dense reconstruction.")
     parser.add_argument("--input-dir", required=True, help="Directory containing input .nii.gz files.")
     parser.add_argument("--output-dir", required=True, help="Directory for preprocessed output volumes.")

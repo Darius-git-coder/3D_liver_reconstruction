@@ -12,6 +12,21 @@ import torch
 
 
 def _run_git_command(args: Sequence[str], cwd: str) -> str | None:
+    """
+    Run a git command and return its stripped standard output.
+    
+    Parameters
+    ----------
+    args : Sequence[str]
+        Arguments passed to the helper or command.
+    cwd : str
+        Working directory used for command execution or metadata lookup.
+    
+    Returns
+    -------
+    str | None
+        Standard output of the git command, or None when execution fails.
+    """
     try:
         completed = subprocess.run(
             list(args),
@@ -26,6 +41,19 @@ def _run_git_command(args: Sequence[str], cwd: str) -> str | None:
 
 
 def get_git_info(start_dir: str) -> Dict[str, Any]:
+    """
+    Collect git metadata for the current working tree.
+    
+    Parameters
+    ----------
+    start_dir : str
+        Directory from which repository metadata lookup starts.
+    
+    Returns
+    -------
+    Dict[str, Any]
+        Collected metadata.
+    """
     root = _run_git_command(["git", "rev-parse", "--show-toplevel"], cwd=start_dir)
     if not root:
         return {
@@ -56,6 +84,27 @@ def build_repro_metadata(
     extra: Optional[Mapping[str, Any]] = None,
     cwd: str | None = None,
 ) -> Dict[str, Any]:
+    """
+    Assemble experiment metadata for reproducibility tracking.
+    
+    Parameters
+    ----------
+    args : Mapping[str, Any]
+        Arguments passed to the helper or command.
+    command : Sequence[str] | None
+        Command sequence that should be executed or recorded. Defaults to None.
+    split_manifest_path : str | None
+        Filesystem path to a split manifest. Defaults to None.
+    extra : Optional[Mapping[str, Any]]
+        Additional metadata merged into the serialized output. Defaults to None.
+    cwd : str | None
+        Working directory used for command execution or metadata lookup. Defaults to None.
+    
+    Returns
+    -------
+    Dict[str, Any]
+        Constructed object ready for downstream use.
+    """
     workdir = os.path.normpath(cwd or os.getcwd())
     payload: Dict[str, Any] = {
         "created_at_utc": datetime.now(timezone.utc).isoformat(),

@@ -31,11 +31,41 @@ from scripts.train_inpainting import LiverInpaintingDataset, build_model, clamp_
 
 
 def save_json(path: str, payload: Dict[str, Any]) -> None:
+    """
+    Write a JSON document to disk.
+    
+    Parameters
+    ----------
+    path : str
+        Filesystem path to the input artifact.
+    payload : Dict[str, Any]
+        Structured data that will be serialized as JSON.
+    
+    Returns
+    -------
+    None
+        The JSON artifact is written to disk.
+    """
     with open(path, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2, ensure_ascii=False)
 
 
 def write_rows_csv(path: str, rows: List[Dict[str, Any]]) -> None:
+    """
+    Write row dictionaries to a CSV file.
+    
+    Parameters
+    ----------
+    path : str
+        Filesystem path to the input artifact.
+    rows : List[Dict[str, Any]]
+        Row dictionaries that should be written or summarized.
+    
+    Returns
+    -------
+    None
+        The CSV artifact is written to disk.
+    """
     if not rows:
         return
     fieldnames: List[str] = []
@@ -54,6 +84,21 @@ def write_rows_csv(path: str, rows: List[Dict[str, Any]]) -> None:
 
 
 def maybe_limit_cases(files: List[str], max_cases: int | None) -> List[str]:
+    """
+    Optionally limit the number of selected cases.
+    
+    Parameters
+    ----------
+    files : List[str]
+        Sequence of input case files.
+    max_cases : int | None
+        Requested max cases.
+    
+    Returns
+    -------
+    List[str]
+        Selected case paths after applying the optional limit.
+    """
     if max_cases is None:
         return files
     limit = int(max_cases)
@@ -63,6 +108,19 @@ def maybe_limit_cases(files: List[str], max_cases: int | None) -> List[str]:
 
 
 def resolve_eval_files(args: argparse.Namespace) -> Tuple[List[str], Dict[str, object] | None]:
+    """
+    Resolve the evaluation cases selected by the command-line arguments.
+    
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Arguments passed to the helper or command.
+    
+    Returns
+    -------
+    Tuple[List[str], Dict[str, object] | None]
+        Resolved value or selection.
+    """
     available_files = resolve_case_paths(args.data)
     if not available_files:
         raise RuntimeError("Keine Dateien gefunden.")
@@ -88,11 +146,19 @@ def resolve_eval_files(args: argparse.Namespace) -> Tuple[List[str], Dict[str, o
 
 
 def main() -> None:
+    """
+    Execute the command-line entry point for this script.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", type=str, required=True)
     ap.add_argument("--weights", type=str, required=True)
     ap.add_argument("--out", type=str, default="./runs/eval")
-    ap.add_argument("--model", type=str, default="partial", choices=["baseline", "gated", "partial"])
+    ap.add_argument("--model", type=str, default="partial", choices=["baseline", "partial"])
     ap.add_argument("--dim", type=int, default=64)
     ap.add_argument("--init_feat", type=int, default=32)
     ap.add_argument("--batch", type=int, default=2)

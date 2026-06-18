@@ -1,3 +1,15 @@
+"""Compare a trained baseline with an ultrasound-geometry finetuned variant.
+
+This helper script orchestrates three optional steps:
+
+1. finetune a baseline checkpoint on the ``ultrasound_probe`` geometry,
+2. evaluate baseline and finetuned checkpoints under the same protocol,
+3. optionally export a direct qualitative comparison for one case.
+
+Unlike the thesis-local working copy, this publication version requires the
+baseline weights, config, and split manifest to be passed explicitly.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -14,19 +26,20 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 
-BEST_RUN_DIR = os.path.join(
-    ROOT,
-    "runs",
-    "ablation_final_128",
-    "standard_unet3d_no_partialconv",
-    "train",
-)
-BEST_BASELINE_WEIGHTS = os.path.join(BEST_RUN_DIR, "best_model.pt")
-BEST_BASELINE_CONFIG = os.path.join(BEST_RUN_DIR, "config.json")
-BEST_BASELINE_SPLIT = os.path.join(BEST_RUN_DIR, "split_manifest.json")
-
-
 def load_json(path: str) -> Dict[str, Any]:
+    """
+    Load a JSON document from disk.
+    
+    Parameters
+    ----------
+    path : str
+        Filesystem path to the input artifact.
+    
+    Returns
+    -------
+    Dict[str, Any]
+        Loaded data structure.
+    """
     with open(path, "r", encoding="utf-8") as handle:
         payload = json.load(handle)
     if not isinstance(payload, dict):
@@ -35,12 +48,46 @@ def load_json(path: str) -> Dict[str, Any]:
 
 
 def append_scalar_arg(command: list[str], name: str, value: Any) -> None:
+    """
+    Append a scalar command-line argument when a value is available.
+    
+    Parameters
+    ----------
+    command : list[str]
+        Command sequence that should be executed or recorded.
+    name : str
+        Human-readable name or identifier.
+    value : Any
+        Scalar value processed by the helper.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     if value is None:
         return
     command.extend([name, str(value)])
 
 
 def append_vector_arg(command: list[str], name: str, values: Iterable[Any] | None) -> None:
+    """
+    Append a vector command-line argument when values are available.
+    
+    Parameters
+    ----------
+    command : list[str]
+        Command sequence that should be executed or recorded.
+    name : str
+        Human-readable name or identifier.
+    values : Iterable[Any] | None
+        Numeric values that should be summarized.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     if values is None:
         return
     command.append(name)
@@ -48,11 +95,39 @@ def append_vector_arg(command: list[str], name: str, values: Iterable[Any] | Non
 
 
 def ensure_exists(path: str, label: str) -> None:
+    """
+    Validate that a required filesystem path exists.
+    
+    Parameters
+    ----------
+    path : str
+        Filesystem path to the input artifact.
+    label : str
+        Human-readable label used in figures and tables.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     if not os.path.exists(path):
         raise FileNotFoundError(f"{label} not found: {path}")
 
 
 def resolve_project_output_path(path: str) -> str:
+    """
+    Resolve an output path relative to the project workspace.
+    
+    Parameters
+    ----------
+    path : str
+        Filesystem path to the input artifact.
+    
+    Returns
+    -------
+    str
+        Resolved value or selection.
+    """
     if not path:
         return ROOT
     if os.path.isabs(path):
@@ -67,12 +142,35 @@ def resolve_project_output_path(path: str) -> str:
 
 
 def build_default_out_root() -> str:
-    return resolve_project_output_path(
-        os.path.join("runs", "ultrasound_realism_compare", "thesis_ablation_best_unet128_usprobe")
-    )
+    """
+    Build the default output directory for comparison artifacts.
+    
+    Returns
+    -------
+    str
+        Constructed object ready for downstream use.
+    """
+    return resolve_project_output_path(os.path.join("runs", "ultrasound_realism_compare", "compare_run"))
 
 
 def build_finetune_command(args: argparse.Namespace, base_config: Dict[str, Any], out_root: str) -> list[str]:
+    """
+    Build the command line for ultrasound-distribution fine-tuning.
+    
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Arguments passed to the helper or command.
+    base_config : Dict[str, Any]
+        Base configuration used to derive downstream commands.
+    out_root : str
+        Root directory used for generated outputs.
+    
+    Returns
+    -------
+    list[str]
+        Constructed object ready for downstream use.
+    """
     out_dir = args.finetune_out or os.path.join(out_root, "finetune")
     command = [
         sys.executable,
@@ -121,6 +219,25 @@ def build_eval_command(
     out_root: str,
     finetuned_weights: str,
 ) -> list[str]:
+    """
+    Build the command line for an evaluation run.
+    
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Arguments passed to the helper or command.
+    base_config : Dict[str, Any]
+        Base configuration used to derive downstream commands.
+    out_root : str
+        Root directory used for generated outputs.
+    finetuned_weights : str
+        Requested finetuned weights.
+    
+    Returns
+    -------
+    list[str]
+        Constructed object ready for downstream use.
+    """
     out_dir = args.eval_out or os.path.join(out_root, "eval")
     command = [
         sys.executable,
@@ -191,6 +308,25 @@ def build_visualization_command(
     out_root: str,
     finetuned_weights: str,
 ) -> list[str]:
+    """
+    Build the command line for a visualization export.
+    
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Arguments passed to the helper or command.
+    base_config : Dict[str, Any]
+        Base configuration used to derive downstream commands.
+    out_root : str
+        Root directory used for generated outputs.
+    finetuned_weights : str
+        Requested finetuned weights.
+    
+    Returns
+    -------
+    list[str]
+        Constructed object ready for downstream use.
+    """
     if not args.visualize_case_id:
         return []
     out_dir = os.path.join(out_root, "visual_compare")
@@ -251,18 +387,41 @@ def build_visualization_command(
 
 
 def write_manifest(path: str, payload: Dict[str, Any]) -> None:
+    """
+    Write a manifest that records the executed comparison commands.
+    
+    Parameters
+    ----------
+    path : str
+        Filesystem path to the input artifact.
+    payload : Dict[str, Any]
+        Structured data that will be serialized as JSON.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2, ensure_ascii=False)
 
 
 def main() -> None:
+    """
+    Execute the command-line entry point for this script.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--mode", type=str, default="all", choices=["all", "finetune", "eval"])
     ap.add_argument("--data", type=str, default="")
-    ap.add_argument("--baseline_weights", type=str, default=BEST_BASELINE_WEIGHTS)
-    ap.add_argument("--base_config", type=str, default=BEST_BASELINE_CONFIG)
-    ap.add_argument("--split_file", type=str, default=BEST_BASELINE_SPLIT)
+    ap.add_argument("--baseline_weights", type=str, required=True)
+    ap.add_argument("--base_config", type=str, required=True)
+    ap.add_argument("--split_file", type=str, required=True)
     ap.add_argument("--out_root", type=str, default="")
     ap.add_argument("--finetune_out", type=str, default="")
     ap.add_argument("--eval_out", type=str, default="")
@@ -275,8 +434,8 @@ def main() -> None:
     ap.add_argument("--seed_start", type=int, default=1337)
     ap.add_argument("--seed", type=int, default=1337)
     ap.add_argument("--num_repeats", type=int, default=5)
-    ap.add_argument("--baseline_label", type=str, default="thesis_ablation_best_unet")
-    ap.add_argument("--finetune_label", type=str, default="thesis_ablation_best_unet_usprobe_finetuned")
+    ap.add_argument("--baseline_label", type=str, default="baseline_model")
+    ap.add_argument("--finetune_label", type=str, default="finetuned_model")
     ap.add_argument("--slice_geometry", type=str, default="ultrasound_probe", choices=["random", "fibonacci", "ultrasound_fan", "ultrasound_probe"])
     ap.add_argument("--slice_axis", type=float, nargs=3, default=None, metavar=("X", "Y", "Z"))
     ap.add_argument("--slice_axis_jitter_deg", type=float, default=20.0)
@@ -321,7 +480,7 @@ def main() -> None:
         "eval_out": os.path.normpath(os.path.abspath(eval_out)),
         "expected_finetuned_weights": os.path.normpath(os.path.abspath(finetuned_weights)),
         "compare_protocol": {
-            "goal": "Compare the best thesis baseline against a finetuned model under more ultrasound-realistic slice sampling.",
+            "goal": "Compare a baseline checkpoint against a finetuned model under more ultrasound-realistic slice sampling.",
             "training_slice_geometry": str(args.slice_geometry),
             "evaluation_slice_geometry": str(args.slice_geometry),
             "evaluation_slice_count": None if args.eval_slices is None else int(args.eval_slices),

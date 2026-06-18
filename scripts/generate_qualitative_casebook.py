@@ -25,6 +25,18 @@ from scripts.visualize_model_comparison import load_case_sample, resolve_eval_fi
 
 @dataclass
 class ModelEntry:
+    """
+    Store metadata for one qualitative-comparison model.
+    
+    Attributes
+    ----------
+    label : str
+        Display label of the model.
+    kind : str
+        Architecture identifier used to build the model.
+    weights : str
+        Path to the checkpoint weights.
+    """
     label: str
     kind: str
     weights: str
@@ -32,6 +44,28 @@ class ModelEntry:
 
 @dataclass
 class SelectedCase:
+    """
+    Store the metadata of a case selected for the casebook.
+    
+    Attributes
+    ----------
+    archetype : str
+        Stored value for archetype.
+    case_id : str
+        Identifier of the selected representative case.
+    path : str
+        Path to the selected case volume.
+    eval_seed : int
+        Stored value for evaluation seed.
+    focus_metric_mean : float
+        Stored value for focus metric mean.
+    focus_metric_row : float
+        Stored value for focus metric row.
+    compare_metric_mean : float | None
+        Stored value for compare metric mean.
+    compare_metric_row : float | None
+        Stored value for compare metric row.
+    """
     archetype: str
     case_id: str
     path: str
@@ -43,10 +77,36 @@ class SelectedCase:
 
 
 def normalize_label(label: str) -> str:
+    """
+    Normalize a model label for comparison and lookup operations.
+    
+    Parameters
+    ----------
+    label : str
+        Human-readable label used in figures and tables.
+    
+    Returns
+    -------
+    str
+        Display label.
+    """
     return str(label).strip()
 
 
 def load_json(path: str) -> Dict[str, Any]:
+    """
+    Load a JSON document from disk.
+    
+    Parameters
+    ----------
+    path : str
+        Filesystem path to the input artifact.
+    
+    Returns
+    -------
+    Dict[str, Any]
+        Loaded data structure.
+    """
     with open(path, "r", encoding="utf-8") as handle:
         payload = json.load(handle)
     if not isinstance(payload, dict):
@@ -55,6 +115,19 @@ def load_json(path: str) -> Dict[str, Any]:
 
 
 def load_eval_artifacts(eval_dir: str) -> tuple[pd.DataFrame, Dict[str, Any], Dict[str, Any]]:
+    """
+    Load evaluation artifacts required for the qualitative casebook.
+    
+    Parameters
+    ----------
+    eval_dir : str
+        Requested evaluation dir.
+    
+    Returns
+    -------
+    tuple[pd.DataFrame, Dict[str, Any], Dict[str, Any]]
+        Loaded data structure.
+    """
     metrics_path = os.path.join(eval_dir, "metrics_per_case.csv")
     repro_path = os.path.join(eval_dir, "reproducibility.json")
     summary_path = os.path.join(eval_dir, "metrics_summary.json")
@@ -73,6 +146,21 @@ def load_eval_artifacts(eval_dir: str) -> tuple[pd.DataFrame, Dict[str, Any], Di
 
 
 def parse_models(repro: Dict[str, Any], summary: Dict[str, Any]) -> List[ModelEntry]:
+    """
+    Parse the requested model specifications for the casebook workflow.
+    
+    Parameters
+    ----------
+    repro : Dict[str, Any]
+        Reproducibility metadata or payload.
+    summary : Dict[str, Any]
+        Nested summary dictionary to flatten.
+    
+    Returns
+    -------
+    List[ModelEntry]
+        Parsed models.
+    """
     models_payload = None
     extra = repro.get("extra")
     if isinstance(extra, dict):
@@ -97,10 +185,38 @@ def parse_models(repro: Dict[str, Any], summary: Dict[str, Any]) -> List[ModelEn
 
 
 def pick_default_focus_label(models: Sequence[ModelEntry]) -> str:
+    """
+    Choose the default focus model for the casebook.
+    
+    Parameters
+    ----------
+    models : Sequence[ModelEntry]
+        Requested models.
+    
+    Returns
+    -------
+    str
+        Display label.
+    """
     return models[-1].label
 
 
 def pick_default_compare_label(models: Sequence[ModelEntry], focus_label: str) -> str | None:
+    """
+    Choose the default comparison model for the casebook.
+    
+    Parameters
+    ----------
+    models : Sequence[ModelEntry]
+        Requested models.
+    focus_label : str
+        Requested focus label.
+    
+    Returns
+    -------
+    str | None
+        Display label.
+    """
     for model in models:
         if model.label != focus_label:
             return model.label
@@ -108,12 +224,44 @@ def pick_default_compare_label(models: Sequence[ModelEntry], focus_label: str) -
 
 
 def validate_metric(frame: pd.DataFrame, metric: str) -> None:
+    """
+    Validate that a requested metric exists in the available data.
+    
+    Parameters
+    ----------
+    frame : pd.DataFrame
+        Pandas DataFrame to serialize.
+    metric : str
+        Metric name used for lookup or reporting.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     if metric not in frame.columns:
         known = ", ".join(str(col) for col in frame.columns)
         raise RuntimeError(f"Metric {metric!r} not present in metrics_per_case.csv. Available: {known}")
 
 
 def select_representative_row(case_rows: pd.DataFrame, metric: str, target_value: float) -> pd.Series:
+    """
+    Select the row that best represents a requested metric criterion.
+    
+    Parameters
+    ----------
+    case_rows : pd.DataFrame
+        Case-level rows considered during representative selection.
+    metric : str
+        Metric name used for lookup or reporting.
+    target_value : float
+        Target metric value used for representative selection.
+    
+    Returns
+    -------
+    pd.Series
+        Resolved value or selection.
+    """
     diffs = (case_rows[metric].astype(float) - float(target_value)).abs()
     order = np.argsort(diffs.to_numpy(), kind="stable")
     return case_rows.iloc[int(order[0])]
@@ -128,6 +276,29 @@ def select_cases(
     selector: str,
     lower_is_better: bool,
 ) -> List[SelectedCase]:
+    """
+    Select representative cases for the qualitative casebook.
+    
+    Parameters
+    ----------
+    frame : pd.DataFrame
+        Pandas DataFrame to serialize.
+    focus_label : str
+        Requested focus label.
+    compare_label : str | None
+        Requested compare label.
+    metric : str
+        Metric name used for lookup or reporting.
+    selector : str
+        Callable or rule used to choose rows from a table.
+    lower_is_better : bool
+        Whether smaller metric values should be preferred.
+    
+    Returns
+    -------
+    List[SelectedCase]
+        Resolved value or selection.
+    """
     label_frame = frame[frame["label"] == focus_label].copy()
     if label_frame.empty:
         raise RuntimeError(f"No rows found for focus label {focus_label!r}.")
@@ -216,6 +387,19 @@ def select_cases(
 
 
 def resolve_model_map(models: Sequence[ModelEntry]) -> Dict[str, ModelEntry]:
+    """
+    Resolve models into a label-indexed lookup mapping.
+    
+    Parameters
+    ----------
+    models : Sequence[ModelEntry]
+        Requested models.
+    
+    Returns
+    -------
+    Dict[str, ModelEntry]
+        Resolved value or selection.
+    """
     return {model.label: model for model in models}
 
 
@@ -226,6 +410,25 @@ def build_dataset_sample(
     seed: int,
     args_payload: Dict[str, Any],
 ) -> tuple[torch.Tensor, torch.Tensor, Dict[str, Any]]:
+    """
+    Build a dataset sample for one selected case.
+    
+    Parameters
+    ----------
+    files : List[str]
+        Sequence of input case files.
+    case_id : str
+        Case identifier.
+    seed : int
+        Random seed used for reproducible sampling.
+    args_payload : Dict[str, Any]
+        Serialized command-line or configuration payload stored with the artifact.
+    
+    Returns
+    -------
+    tuple[torch.Tensor, torch.Tensor, Dict[str, Any]]
+        Constructed object ready for downstream use.
+    """
     slices = args_payload.get("slices")
     slices_min = int(args_payload.get("slices_min", 4))
     slices_max = int(args_payload.get("slices_max", 32))
@@ -258,6 +461,21 @@ def build_dataset_sample(
 
 
 def choose_focus_indices(gt: np.ndarray, mask: np.ndarray) -> Dict[str, int]:
+    """
+    Choose the slice indices that best highlight a selected case.
+    
+    Parameters
+    ----------
+    gt : np.ndarray
+        Ground-truth tensor or array.
+    mask : np.ndarray
+        Binary mask that marks valid or selected voxels.
+    
+    Returns
+    -------
+    Dict[str, int]
+        Resolved value or selection.
+    """
     foreground = gt > 1e-3
     missing = mask < 0.5
     focus = foreground & missing
@@ -275,6 +493,23 @@ def choose_focus_indices(gt: np.ndarray, mask: np.ndarray) -> Dict[str, int]:
 
 
 def view_slice(volume: np.ndarray, view_name: str, index: int) -> np.ndarray:
+    """
+    Extract a 2D view from a volume for the requested orientation.
+    
+    Parameters
+    ----------
+    volume : np.ndarray
+        Input volume array.
+    view_name : str
+        Name of the requested anatomical view.
+    index : int
+        Zero-based index used for deterministic naming or selection.
+    
+    Returns
+    -------
+    np.ndarray
+        Extracted slice.
+    """
     if view_name == "Axial":
         return volume[index, :, :]
     if view_name == "Coronal":
@@ -285,6 +520,19 @@ def view_slice(volume: np.ndarray, view_name: str, index: int) -> np.ndarray:
 
 
 def compute_display_limits(*volumes: np.ndarray) -> tuple[float, float]:
+    """
+    Compute stable display limits for figure rendering.
+    
+    Parameters
+    ----------
+    *volumes : np.ndarray
+        Collection of input volumes.
+    
+    Returns
+    -------
+    tuple[float, float]
+        Computed summary values.
+    """
     hi = max(float(np.quantile(vol, 0.995)) for vol in volumes)
     return 0.0, max(hi, 1e-3)
 
@@ -297,6 +545,27 @@ def overlay_signed_error(
     vmax_gray: float,
     vmax_err: float,
 ) -> None:
+    """
+    Overlay a signed error map onto a displayed slice.
+    
+    Parameters
+    ----------
+    ax : plt.Axes
+        Matplotlib axis used for plotting.
+    gt_img : np.ndarray
+        Ground-truth 2D image or slice.
+    pred_img : np.ndarray
+        Predicted 2D image or slice.
+    vmax_gray : float
+        Upper grayscale display limit.
+    vmax_err : float
+        Upper absolute error display limit.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     diff = pred_img - gt_img
     alpha = np.clip(np.abs(diff) / max(vmax_err, 1e-6), 0.0, 1.0) ** 0.85
     alpha = 0.85 * alpha
@@ -306,6 +575,23 @@ def overlay_signed_error(
 
 
 def format_metric_pair(name: str, value_a: float | None, value_b: float | None) -> str:
+    """
+    Format two metric values into one compact label.
+    
+    Parameters
+    ----------
+    name : str
+        Human-readable name or identifier.
+    value_a : float | None
+        First scalar value used in a comparison or label.
+    value_b : float | None
+        Second scalar value used in a comparison or label.
+    
+    Returns
+    -------
+    str
+        Formatted metric pair.
+    """
     if value_a is None and value_b is None:
         return ""
     if value_b is None:
@@ -315,6 +601,23 @@ def format_metric_pair(name: str, value_a: float | None, value_b: float | None) 
 
 
 def make_surface_points(volume: np.ndarray, threshold: float, max_points: int) -> np.ndarray:
+    """
+    Convert a volumetric mask into surface point samples.
+    
+    Parameters
+    ----------
+    volume : np.ndarray
+        Input volume array.
+    threshold : float
+        Threshold used to define the foreground region.
+    max_points : int
+        Maximum number of points sampled for visualization.
+    
+    Returns
+    -------
+    np.ndarray
+        Surface points sampled from the requested volume.
+    """
     occupancy = volume >= threshold
     if not np.any(occupancy):
         return np.zeros((0, 3), dtype=np.float32)
@@ -328,6 +631,25 @@ def make_surface_points(volume: np.ndarray, threshold: float, max_points: int) -
 
 
 def plot_surface(ax: Any, points: np.ndarray, title: str, color: str) -> None:
+    """
+    Plot a surface representation on a 3D axis.
+    
+    Parameters
+    ----------
+    ax : Any
+        Matplotlib axis used for plotting.
+    points : np.ndarray
+        Points through which the sampled slice planes pass.
+    title : str
+        Plot or figure title.
+    color : str
+        Color used for plotting or annotation.
+    
+    Returns
+    -------
+    None
+        The surface is drawn onto the provided axis.
+    """
     if points.size == 0:
         ax.set_title(f"{title}\n(no surface voxels)")
         ax.set_axis_off()
@@ -341,6 +663,23 @@ def plot_surface(ax: Any, points: np.ndarray, title: str, color: str) -> None:
 
 
 def make_error_cloud(error_volume: np.ndarray, q: float, max_points: int) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Build a point cloud that encodes signed reconstruction errors.
+    
+    Parameters
+    ----------
+    error_volume : np.ndarray
+        Requested error volume.
+    q : float
+        Quantile used when limiting visualized errors.
+    max_points : int
+        Maximum number of points sampled for visualization.
+    
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Error-point coordinates together with their signed values.
+    """
     threshold = float(np.quantile(np.abs(error_volume), q))
     coords = np.argwhere(np.abs(error_volume) >= threshold)
     if coords.shape[0] == 0:
@@ -354,6 +693,27 @@ def make_error_cloud(error_volume: np.ndarray, q: float, max_points: int) -> tup
 
 
 def plot_signed_cloud(ax: Any, coords: np.ndarray, values: np.ndarray, title: str, vmax: float) -> None:
+    """
+    Plot a signed-error point cloud on a 3D axis.
+    
+    Parameters
+    ----------
+    ax : Any
+        Matplotlib axis used for plotting.
+    coords : np.ndarray
+        Coordinate array used for plotting or selection.
+    values : np.ndarray
+        Numeric values that should be summarized.
+    title : str
+        Plot or figure title.
+    vmax : float
+        Requested vmax.
+    
+    Returns
+    -------
+    None
+        The point cloud is drawn onto the provided axis.
+    """
     if coords.size == 0:
         ax.set_title(f"{title}\n(no highlighted voxels)")
         ax.set_axis_off()
@@ -387,6 +747,31 @@ def create_cover_page(
     selected: Sequence[SelectedCase],
     args_payload: Dict[str, Any],
 ) -> None:
+    """
+    Create the cover page of the qualitative casebook.
+    
+    Parameters
+    ----------
+    pdf : PdfPages
+        PdfPages handle that receives rendered casebook pages.
+    eval_dir : str
+        Requested evaluation dir.
+    focus_label : str
+        Requested focus label.
+    compare_label : str | None
+        Requested compare label.
+    metric : str
+        Metric name used for lookup or reporting.
+    selected : Sequence[SelectedCase]
+        Selected cases or rows used for rendering.
+    args_payload : Dict[str, Any]
+        Serialized command-line or configuration payload stored with the artifact.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     fig = plt.figure(figsize=(11.69, 8.27))
     ax = fig.add_axes([0, 0, 1, 1])
     ax.axis("off")
@@ -440,6 +825,41 @@ def create_orthogonal_page(
     model_label: str,
     role_label: str,
 ) -> None:
+    """
+    Create an orthogonal-slice comparison page.
+    
+    Parameters
+    ----------
+    pdf : PdfPages
+        PdfPages handle that receives rendered casebook pages.
+    archetype : str
+        Qualitative archetype label used in the figure.
+    case_id : str
+        Case identifier.
+    eval_seed : int
+        Seed used for one evaluation repetition.
+    gt : np.ndarray
+        Ground-truth tensor or array.
+    sparse : np.ndarray
+        Sparse observation tensor or array.
+    mask : np.ndarray
+        Binary mask that marks valid or selected voxels.
+    pred : np.ndarray
+        Predicted reconstruction tensor or array.
+    metrics_row : Dict[str, float]
+        Case-level metric row associated with the selected example.
+    metrics_mean : Dict[str, float] | None
+        Aggregated mean metrics associated with the selected example.
+    model_label : str
+        Display label of the model being reported.
+    role_label : str
+        Display label that describes the model role in a figure.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     indices = choose_focus_indices(gt, mask)
     vmin, vmax = compute_display_limits(gt, sparse, pred)
     vmax_err = max(float(np.quantile(np.abs(pred - gt), 0.995)), 1e-6)
@@ -505,6 +925,37 @@ def create_3d_page(
     focus_label: str,
     surface_threshold: float,
 ) -> None:
+    """
+    Create a 3D qualitative-comparison page.
+    
+    Parameters
+    ----------
+    pdf : PdfPages
+        PdfPages handle that receives rendered casebook pages.
+    archetype : str
+        Qualitative archetype label used in the figure.
+    case_id : str
+        Case identifier.
+    eval_seed : int
+        Seed used for one evaluation repetition.
+    gt : np.ndarray
+        Ground-truth tensor or array.
+    pred_compare : np.ndarray | None
+        Prediction generated by the comparison model.
+    pred_focus : np.ndarray
+        Prediction generated by the focus model.
+    compare_label : str | None
+        Requested compare label.
+    focus_label : str
+        Requested focus label.
+    surface_threshold : float
+        Requested surface threshold.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     gt_points = make_surface_points(gt, surface_threshold, max_points=14000)
     focus_points = make_surface_points(pred_focus, surface_threshold, max_points=14000)
     compare_points = make_surface_points(pred_compare, surface_threshold, max_points=14000) if pred_compare is not None else np.zeros((0, 3), dtype=np.float32)
@@ -566,10 +1017,40 @@ def create_3d_page(
 
 
 def metrics_to_float_dict(metrics: Dict[str, float]) -> Dict[str, float]:
+    """
+    Convert mixed metric values into a float-only dictionary.
+    
+    Parameters
+    ----------
+    metrics : Dict[str, float]
+        Metric names or metric values used for reporting.
+    
+    Returns
+    -------
+    Dict[str, float]
+        Metric dictionary with float-converted values.
+    """
     return {str(key): float(value) for key, value in metrics.items()}
 
 
 def load_case_mean_metrics(frame: pd.DataFrame, label: str, case_id: str) -> Dict[str, float]:
+    """
+    Load mean case metrics from disk.
+    
+    Parameters
+    ----------
+    frame : pd.DataFrame
+        Pandas DataFrame to serialize.
+    label : str
+        Human-readable label used in figures and tables.
+    case_id : str
+        Case identifier.
+    
+    Returns
+    -------
+    Dict[str, float]
+        Loaded data structure.
+    """
     subset = frame[(frame["label"] == label) & (frame["case_id"] == case_id)].copy()
     metric_columns = [col for col in subset.columns if col.startswith(("mae_", "rmse_", "psnr_", "ssim_"))]
     if subset.empty or not metric_columns:
@@ -579,6 +1060,19 @@ def load_case_mean_metrics(frame: pd.DataFrame, label: str, case_id: str) -> Dic
 
 
 def series_metrics_to_dict(row: pd.Series) -> Dict[str, float]:
+    """
+    Convert a pandas metric series into a plain dictionary.
+    
+    Parameters
+    ----------
+    row : pd.Series
+        Requested row.
+    
+    Returns
+    -------
+    Dict[str, float]
+        Metric dictionary converted from the provided pandas series.
+    """
     out: Dict[str, float] = {}
     for key, value in row.items():
         if str(key).startswith(("mae_", "rmse_", "psnr_", "ssim_")):
@@ -587,6 +1081,14 @@ def series_metrics_to_dict(row: pd.Series) -> Dict[str, float]:
 
 
 def main() -> None:
+    """
+    Execute the command-line entry point for this script.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--eval_dir", type=str, required=True)
     ap.add_argument("--out", type=str, default="")

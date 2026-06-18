@@ -29,6 +29,23 @@ from scripts.train_inpainting import build_model
 
 
 def save_figure(fig: plt.Figure, out_path: str, dpi: int = 220) -> None:
+    """
+    Save a matplotlib figure to one or more output files.
+    
+    Parameters
+    ----------
+    fig : plt.Figure
+        Matplotlib figure to save or annotate.
+    out_path : str
+        Destination path for the written artifact.
+    dpi : int
+        Dots-per-inch resolution used for figure export. Defaults to 220.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     fig.savefig(os.path.normpath(out_path), dpi=dpi)
 
 
@@ -38,7 +55,25 @@ def kernel_regression_fill(
     sigma: float = 2.0,
     eps: float = 1e-6,
 ) -> np.ndarray:
-    """Simple continuous baseline: Gaussian kernel regression on known voxels."""
+    """
+    Fill missing voxels with kernel regression on observed samples.
+    
+    Parameters
+    ----------
+    sparse : np.ndarray
+        Sparse observation tensor or array.
+    mask : np.ndarray
+        Binary mask that marks valid or selected voxels.
+    sigma : float
+        Standard deviation of the Gaussian kernel. Defaults to 2.0.
+    eps : float
+        Small constant that avoids division by zero. Defaults to 1e-6.
+    
+    Returns
+    -------
+    np.ndarray
+        Dense prediction obtained by kernel-regression interpolation.
+    """
     weighted = gaussian_filter(sparse * mask, sigma=sigma)
     support = gaussian_filter(mask, sigma=sigma)
     pred = np.divide(weighted, support + eps, out=np.zeros_like(weighted), where=support > eps)
@@ -54,6 +89,29 @@ def run_model(
     model_kind: str,
     init_feat: int,
 ) -> np.ndarray:
+    """
+    Run a model on a prepared sparse input.
+    
+    Parameters
+    ----------
+    volume : np.ndarray
+        Input volume array.
+    mask : np.ndarray
+        Binary mask that marks valid or selected voxels.
+    weights : str
+        Checkpoint path or weighting coefficients used by the helper.
+    device : torch.device
+        Torch device on which tensors should be created or evaluated.
+    model_kind : str
+        Architecture identifier used to build a model.
+    init_feat : int
+        Base number of feature channels in the first stage.
+    
+    Returns
+    -------
+    np.ndarray
+        Output produced by the model or workflow.
+    """
     model = build_model(model_kind, init_feat=init_feat).to(device)
     state = torch_load_weights_compat(weights, map_location=device)
     if isinstance(state, dict) and "model" in state and isinstance(state["model"], dict):
@@ -70,6 +128,23 @@ def run_model(
 
 
 def to_metrics(pred: np.ndarray, target: np.ndarray, mask: np.ndarray) -> dict[str, float]:
+    """
+    Compute a compact metric dictionary for displayed predictions.
+    
+    Parameters
+    ----------
+    pred : np.ndarray
+        Predicted reconstruction tensor or array.
+    target : np.ndarray
+        Reference tensor or array used as supervision.
+    mask : np.ndarray
+        Binary mask that marks valid or selected voxels.
+    
+    Returns
+    -------
+    dict[str, float]
+        Compact metric dictionary for the provided prediction.
+    """
     pred_t = torch.from_numpy(pred[None, None]).float()
     target_t = torch.from_numpy(target[None, None]).float()
     mask_t = torch.from_numpy(mask[None, None]).float()
@@ -77,6 +152,27 @@ def to_metrics(pred: np.ndarray, target: np.ndarray, mask: np.ndarray) -> dict[s
 
 
 def plot_volume_surface(ax, vol: np.ndarray, thr: float, title: str, color: str) -> None:
+    """
+    Plot a surface view of a reconstructed volume.
+    
+    Parameters
+    ----------
+    ax : Any
+        Matplotlib axis used for plotting.
+    vol : np.ndarray
+        Input volume array.
+    thr : float
+        Threshold used to define the foreground region.
+    title : str
+        Plot or figure title.
+    color : str
+        Color used for plotting or annotation.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     coords = np.argwhere(vol >= thr)
     if coords.shape[0] == 0:
         ax.set_title(f"{title}\n(no voxels >= {thr:.2f})")
@@ -104,6 +200,25 @@ def plot_volume_surface(ax, vol: np.ndarray, thr: float, title: str, color: str)
 
 
 def plot_error_cloud(ax, err: np.ndarray, title: str, cmap: str = "inferno") -> None:
+    """
+    Plot a 3D error cloud for a reconstructed volume.
+    
+    Parameters
+    ----------
+    ax : Any
+        Matplotlib axis used for plotting.
+    err : np.ndarray
+        Error map or error tensor.
+    title : str
+        Plot or figure title.
+    cmap : str
+        Matplotlib colormap name used for rendering. Defaults to "inferno".
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     thresh = float(np.quantile(err, 0.97))
     coords = np.argwhere(err >= thresh)
     vals = err[err >= thresh]
@@ -137,6 +252,25 @@ def plot_error_cloud(ax, err: np.ndarray, title: str, cmap: str = "inferno") -> 
 
 
 def save_3d_models(gt: np.ndarray, unet: np.ndarray, reg: np.ndarray, out_path: str) -> None:
+    """
+    Save 3D model comparison figures.
+    
+    Parameters
+    ----------
+    gt : np.ndarray
+        Ground-truth tensor or array.
+    unet : np.ndarray
+        Prediction generated by the baseline U-Net.
+    reg : np.ndarray
+        Prediction generated by the comparison model.
+    out_path : str
+        Destination path for the written artifact.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     thr = max(0.15, float(np.quantile(gt, 0.75)))
     fig = plt.figure(figsize=(16, 5))
     ax1 = fig.add_subplot(1, 3, 1, projection="3d")
@@ -157,6 +291,27 @@ def save_mip_comparison(
     reg: np.ndarray,
     out_path: str,
 ) -> None:
+    """
+    Save maximum-intensity-projection comparison figures.
+    
+    Parameters
+    ----------
+    gt : np.ndarray
+        Ground-truth tensor or array.
+    sparse : np.ndarray
+        Sparse observation tensor or array.
+    unet : np.ndarray
+        Prediction generated by the baseline U-Net.
+    reg : np.ndarray
+        Prediction generated by the comparison model.
+    out_path : str
+        Destination path for the written artifact.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     volumes = [
         ("GT", gt),
         ("Sparse Input", sparse),
@@ -200,6 +355,23 @@ def save_error_maps(
     err_reg: np.ndarray,
     out_path: str,
 ) -> None:
+    """
+    Save slice-wise error map figures.
+    
+    Parameters
+    ----------
+    err_unet : np.ndarray
+        Error map produced by the baseline U-Net.
+    err_reg : np.ndarray
+        Error map produced by the comparison model.
+    out_path : str
+        Destination path for the written artifact.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     fig = plt.figure(figsize=(12, 5))
     ax1 = fig.add_subplot(1, 2, 1, projection="3d")
     ax2 = fig.add_subplot(1, 2, 2, projection="3d")
@@ -222,6 +394,29 @@ def save_slice_overview(
     err_reg: np.ndarray,
     out_path: str,
 ) -> None:
+    """
+    Save overview slices for multiple reconstructions.
+    
+    Parameters
+    ----------
+    gt : np.ndarray
+        Ground-truth tensor or array.
+    unet : np.ndarray
+        Prediction generated by the baseline U-Net.
+    reg : np.ndarray
+        Prediction generated by the comparison model.
+    err_unet : np.ndarray
+        Error map produced by the baseline U-Net.
+    err_reg : np.ndarray
+        Error map produced by the comparison model.
+    out_path : str
+        Destination path for the written artifact.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     mid = gt.shape[0] // 2
     fig, axes = plt.subplots(2, 3, figsize=(14, 9))
     panels = [
@@ -250,6 +445,29 @@ def save_density_analysis(
     out_path: str,
     title_prefix: str = "Missing-Region",
 ) -> None:
+    """
+    Save density-analysis figures and summaries.
+    
+    Parameters
+    ----------
+    gt : np.ndarray
+        Ground-truth tensor or array.
+    unet : np.ndarray
+        Prediction generated by the baseline U-Net.
+    reg : np.ndarray
+        Prediction generated by the comparison model.
+    mask : np.ndarray
+        Binary mask that marks valid or selected voxels.
+    out_path : str
+        Destination path for the written artifact.
+    title_prefix : str
+        Text prefix used when composing a title. Defaults to "Missing-Region".
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     missing = mask < 0.5
     _save_density_analysis_arrays(gt[missing], unet[missing], reg[missing], out_path, title_prefix)
 
@@ -261,6 +479,27 @@ def _save_density_analysis_arrays(
     out_path: str,
     title_prefix: str,
 ) -> None:
+    """
+    Persist intermediate arrays used for density analysis.
+    
+    Parameters
+    ----------
+    gt_vals : np.ndarray
+        Ground-truth values used in a distribution plot.
+    unet_vals : np.ndarray
+        Values generated by the baseline U-Net.
+    reg_vals : np.ndarray
+        Values generated by the comparison model.
+    out_path : str
+        Destination path for the written artifact.
+    title_prefix : str
+        Text prefix used when composing a title.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     if gt_vals.size == 0:
         return
 
@@ -318,6 +557,27 @@ def save_stacked_distributions(
     out_path: str,
     title_prefix: str,
 ) -> None:
+    """
+    Save stacked distribution plots for intensity comparisons.
+    
+    Parameters
+    ----------
+    gt_vals : np.ndarray
+        Ground-truth values used in a distribution plot.
+    unet_vals : np.ndarray
+        Values generated by the baseline U-Net.
+    reg_vals : np.ndarray
+        Values generated by the comparison model.
+    out_path : str
+        Destination path for the written artifact.
+    title_prefix : str
+        Text prefix used when composing a title.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     if gt_vals.size == 0:
         return
 
@@ -358,6 +618,29 @@ def save_density_analysis_without_background(
     out_path: str,
     foreground_thr: float,
 ) -> None:
+    """
+    Save density-analysis figures with the background suppressed.
+    
+    Parameters
+    ----------
+    gt : np.ndarray
+        Ground-truth tensor or array.
+    unet : np.ndarray
+        Prediction generated by the baseline U-Net.
+    reg : np.ndarray
+        Prediction generated by the comparison model.
+    mask : np.ndarray
+        Binary mask that marks valid or selected voxels.
+    out_path : str
+        Destination path for the written artifact.
+    foreground_thr : float
+        Threshold used to identify foreground voxels.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     missing = mask < 0.5
     foreground = gt > foreground_thr
     valid = missing & foreground
@@ -378,6 +661,29 @@ def save_stacked_distributions_without_background(
     out_path: str,
     foreground_thr: float,
 ) -> None:
+    """
+    Save stacked distribution plots without background voxels.
+    
+    Parameters
+    ----------
+    gt : np.ndarray
+        Ground-truth tensor or array.
+    unet : np.ndarray
+        Prediction generated by the baseline U-Net.
+    reg : np.ndarray
+        Prediction generated by the comparison model.
+    mask : np.ndarray
+        Binary mask that marks valid or selected voxels.
+    out_path : str
+        Destination path for the written artifact.
+    foreground_thr : float
+        Threshold used to identify foreground voxels.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     missing = mask < 0.5
     foreground = gt > foreground_thr
     valid = missing & foreground
@@ -396,6 +702,25 @@ def save_difference_mips(
     reg: np.ndarray,
     out_path: str,
 ) -> None:
+    """
+    Save difference MIP figures.
+    
+    Parameters
+    ----------
+    gt : np.ndarray
+        Ground-truth tensor or array.
+    unet : np.ndarray
+        Prediction generated by the baseline U-Net.
+    reg : np.ndarray
+        Prediction generated by the comparison model.
+    out_path : str
+        Destination path for the written artifact.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     err_unet = np.abs(gt - unet)
     err_reg = np.abs(gt - reg)
 
@@ -436,6 +761,25 @@ def save_windowed_slices(
     reg: np.ndarray,
     out_path: str,
 ) -> None:
+    """
+    Save windowed slice figures for detailed inspection.
+    
+    Parameters
+    ----------
+    gt : np.ndarray
+        Ground-truth tensor or array.
+    unet : np.ndarray
+        Prediction generated by the baseline U-Net.
+    reg : np.ndarray
+        Prediction generated by the comparison model.
+    out_path : str
+        Destination path for the written artifact.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     mid_d = gt.shape[0] // 2
     mid_h = gt.shape[1] // 2
     mid_w = gt.shape[2] // 2
@@ -464,11 +808,19 @@ def save_windowed_slices(
 
 
 def main() -> None:
+    """
+    Execute the command-line entry point for this script.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--volume", type=str, required=True)
     ap.add_argument("--weights", type=str, required=True)
     ap.add_argument("--out", type=str, required=True)
-    ap.add_argument("--model", type=str, default="partial", choices=["baseline", "gated", "partial"])
+    ap.add_argument("--model", type=str, default="partial", choices=["baseline", "partial"])
     ap.add_argument("--dim", type=int, default=64)
     ap.add_argument("--init_feat", type=int, default=32)
     ap.add_argument("--slices", type=int, default=64)

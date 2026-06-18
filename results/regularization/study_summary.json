@@ -1,0 +1,85 @@
+﻿{
+    "experiment":  "regularization_behavior",
+    "source_run":  "liver_sparse_reconstruction_core/runs/ablation_final_128/standard_unet3d_no_partialconv/thesis_regularization_full",
+    "model":  {
+                  "kind":  "baseline",
+                  "dim":  128,
+                  "init_feat":  32,
+                  "hard_constraint":  true
+              },
+    "evaluation":  {
+                       "split":  "test",
+                       "max_cases":  19,
+                       "selected_case_count":  19
+                   },
+    "studies":  [
+                    "convergence",
+                    "noise",
+                    "sampling",
+                    "sensitivity",
+                    "robustness"
+                ],
+    "selected_cases":  [
+                           "liver_124",
+                           "liver_103",
+                           "liver_78",
+                           "liver_45",
+                           "liver_91",
+                           "liver_84",
+                           "liver_18",
+                           "liver_58",
+                           "liver_21",
+                           "liver_127",
+                           "liver_75",
+                           "liver_86",
+                           "liver_7",
+                           "liver_60",
+                           "liver_101",
+                           "liver_23",
+                           "liver_25",
+                           "liver_39",
+                           "liver_98"
+                       ],
+    "headline_metrics":  [
+                             "rmse_missing",
+                             "ssim_all"
+                         ],
+    "primary_metric":  "rmse_missing",
+    "secondary_metric":  "ssim_all",
+    "convergence_slices":  [
+                               4,
+                               8,
+                               16,
+                               32,
+                               64,
+                               128
+                           ],
+    "noise_levels":  [
+                         0.0,
+                         0.01,
+                         0.02,
+                         0.05
+                     ],
+    "sampling_slices":  [
+                            4,
+                            8,
+                            16,
+                            32,
+                            64,
+                            128
+                        ],
+    "sampling_repeats":  8,
+    "sensitivity_noise_levels":  [
+                                     0.005,
+                                     0.01,
+                                     0.02
+                                 ],
+    "figures":  [
+                    "figures/thesis_overview.pdf",
+                    "figures/convergence_dual_metrics.pdf",
+                    "figures/noise_dual_metrics.pdf",
+                    "figures/sampling_stability.pdf",
+                    "figures/sensitivity_stability.pdf",
+                    "figures/robustness_primary_metric.pdf"
+                ]
+}

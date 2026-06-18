@@ -24,12 +24,41 @@ from scripts.train_inpainting import LiverInpaintingDataset, build_model, clamp_
 
 @dataclass
 class ModelSpec:
+    """
+    Store the metadata needed to load and label a model.
+    
+    Attributes
+    ----------
+    label : str
+        Human-readable label used in reports and figures.
+    kind : str
+        Architecture identifier used when instantiating the model.
+    weights : str
+        Path to the checkpoint weights.
+    """
     label: str
     kind: str
     weights: str
 
 
 def default_label_from_path(path: str, fallback_model: str, index: int) -> str:
+    """
+    Derive a readable default label from a checkpoint path.
+    
+    Parameters
+    ----------
+    path : str
+        Filesystem path to the input artifact.
+    fallback_model : str
+        Fallback model name used when a path has no stem.
+    index : int
+        Zero-based index used for deterministic naming or selection.
+    
+    Returns
+    -------
+    str
+        Default label derived from the checkpoint path.
+    """
     stem = os.path.splitext(os.path.basename(path))[0]
     stem = os.path.splitext(stem)[0]
     stem = stem.strip()
@@ -39,6 +68,19 @@ def default_label_from_path(path: str, fallback_model: str, index: int) -> str:
 
 
 def parse_model_specs(args: argparse.Namespace) -> List[ModelSpec]:
+    """
+    Parse model specifications from command-line arguments.
+    
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Arguments passed to the helper or command.
+    
+    Returns
+    -------
+    List[ModelSpec]
+        Parsed model specs.
+    """
     weights = list(args.weights or [])
     models = list(args.model or [])
     labels = list(args.label or [])
@@ -57,6 +99,19 @@ def parse_model_specs(args: argparse.Namespace) -> List[ModelSpec]:
 
 
 def resolve_eval_seeds(args: argparse.Namespace) -> List[int]:
+    """
+    Resolve the evaluation seeds selected for repeated runs.
+    
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Arguments passed to the helper or command.
+    
+    Returns
+    -------
+    List[int]
+        Resolved value or selection.
+    """
     if args.seeds:
         return [int(seed) for seed in args.seeds]
     return [int(args.seed_start) + offset for offset in range(int(args.num_repeats))]
@@ -68,6 +123,23 @@ def build_dataset(
     args: argparse.Namespace,
     seed: int,
 ) -> LiverInpaintingDataset:
+    """
+    Build an evaluation dataset from the selected cases and arguments.
+    
+    Parameters
+    ----------
+    files : Sequence[str]
+        Sequence of input case files.
+    args : argparse.Namespace
+        Arguments passed to the helper or command.
+    seed : int
+        Random seed used for reproducible sampling.
+    
+    Returns
+    -------
+    LiverInpaintingDataset
+        Constructed object ready for downstream use.
+    """
     slices_min = int(args.slices_min)
     slices_max = int(args.slices_max)
     if args.slices is not None:
@@ -99,6 +171,23 @@ def build_dataset(
 
 
 def load_model_spec(spec: ModelSpec, *, init_feat: int, device: torch.device) -> torch.nn.Module:
+    """
+    Instantiate a model and load the weights described by a model specification.
+    
+    Parameters
+    ----------
+    spec : ModelSpec
+        Model specification that describes weights and architecture.
+    init_feat : int
+        Base number of feature channels in the first stage.
+    device : torch.device
+        Torch device on which tensors should be created or evaluated.
+    
+    Returns
+    -------
+    torch.nn.Module
+        Loaded data structure.
+    """
     model = build_model(spec.kind, init_feat=init_feat).to(device)
     state = torch_load_weights_compat(spec.weights, map_location=device)
     if isinstance(state, dict) and "model" in state and isinstance(state["model"], dict):
@@ -115,6 +204,21 @@ def summarize_grouped_rows(
     *,
     group_keys: Sequence[str],
 ) -> List[Dict[str, Any]]:
+    """
+    Summarize metric rows after grouping them by selected keys.
+    
+    Parameters
+    ----------
+    rows : Sequence[Dict[str, Any]]
+        Row dictionaries that should be written or summarized.
+    group_keys : Sequence[str]
+        Keys used to group row dictionaries before summarization.
+    
+    Returns
+    -------
+    List[Dict[str, Any]]
+        Computed summary values.
+    """
     grouped: Dict[tuple[Any, ...], List[Dict[str, Any]]] = {}
     for row in rows:
         group = tuple(row[key] for key in group_keys)
@@ -132,10 +236,18 @@ def summarize_grouped_rows(
 
 
 def main() -> None:
+    """
+    Execute the command-line entry point for this script.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--data", type=str, required=True)
     ap.add_argument("--weights", type=str, action="append", required=True, help="Repeat once per model.")
-    ap.add_argument("--model", type=str, action="append", required=True, choices=["baseline", "gated", "partial"])
+    ap.add_argument("--model", type=str, action="append", required=True, choices=["baseline", "partial"])
     ap.add_argument("--label", type=str, action="append", default=None, help="Optional label aligned with --weights.")
     ap.add_argument("--out", type=str, required=True)
     ap.add_argument("--dim", type=int, default=64)

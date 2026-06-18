@@ -8,6 +8,25 @@ from .losses import ssim3d
 
 
 def _masked_mse(pred: torch.Tensor, target: torch.Tensor, mask: Optional[torch.Tensor], eps: float = 1e-8) -> torch.Tensor:
+    """
+    Compute the mean squared error over an optional mask.
+    
+    Parameters
+    ----------
+    pred : torch.Tensor
+        Predicted reconstruction tensor or array.
+    target : torch.Tensor
+        Reference tensor or array used as supervision.
+    mask : Optional[torch.Tensor]
+        Binary mask that marks valid or selected voxels.
+    eps : float
+        Small constant that avoids division by zero. Defaults to 1e-8.
+    
+    Returns
+    -------
+    torch.Tensor
+        Mean squared error aggregated over the selected mask.
+    """
     diff2 = (pred - target) ** 2
     if mask is None:
         return diff2.mean()
@@ -15,6 +34,25 @@ def _masked_mse(pred: torch.Tensor, target: torch.Tensor, mask: Optional[torch.T
 
 
 def masked_mae(pred: torch.Tensor, target: torch.Tensor, mask: Optional[torch.Tensor], eps: float = 1e-8) -> torch.Tensor:
+    """
+    Compute the mean absolute error over an optional mask.
+    
+    Parameters
+    ----------
+    pred : torch.Tensor
+        Predicted reconstruction tensor or array.
+    target : torch.Tensor
+        Reference tensor or array used as supervision.
+    mask : Optional[torch.Tensor]
+        Binary mask that marks valid or selected voxels.
+    eps : float
+        Small constant that avoids division by zero. Defaults to 1e-8.
+    
+    Returns
+    -------
+    torch.Tensor
+        Mean absolute error aggregated over the selected mask.
+    """
     diff = torch.abs(pred - target)
     if mask is None:
         return diff.mean()
@@ -22,10 +60,46 @@ def masked_mae(pred: torch.Tensor, target: torch.Tensor, mask: Optional[torch.Te
 
 
 def masked_rmse(pred: torch.Tensor, target: torch.Tensor, mask: Optional[torch.Tensor]) -> torch.Tensor:
+    """
+    Compute the root mean squared error over an optional mask.
+    
+    Parameters
+    ----------
+    pred : torch.Tensor
+        Predicted reconstruction tensor or array.
+    target : torch.Tensor
+        Reference tensor or array used as supervision.
+    mask : Optional[torch.Tensor]
+        Binary mask that marks valid or selected voxels.
+    
+    Returns
+    -------
+    torch.Tensor
+        Root mean squared error aggregated over the selected mask.
+    """
     return torch.sqrt(_masked_mse(pred, target, mask) + 1e-12)
 
 
 def masked_psnr(pred: torch.Tensor, target: torch.Tensor, mask: Optional[torch.Tensor], data_range: float = 1.0) -> torch.Tensor:
+    """
+    Compute PSNR over an optional mask.
+    
+    Parameters
+    ----------
+    pred : torch.Tensor
+        Predicted reconstruction tensor or array.
+    target : torch.Tensor
+        Reference tensor or array used as supervision.
+    mask : Optional[torch.Tensor]
+        Binary mask that marks valid or selected voxels.
+    data_range : float
+        Dynamic value range used by PSNR or SSIM computations. Defaults to 1.0.
+    
+    Returns
+    -------
+    torch.Tensor
+        PSNR value aggregated over the selected mask.
+    """
     mse = _masked_mse(pred, target, mask)
     return 10.0 * torch.log10((data_range ** 2) / (mse + 1e-12))
 
@@ -36,6 +110,25 @@ def compute_metrics(
     known_mask: torch.Tensor,
     data_range: float = 1.0,
 ) -> Dict[str, float]:
+    """
+    Compute reconstruction metrics for full, known, and missing regions.
+    
+    Parameters
+    ----------
+    pred : torch.Tensor
+        Predicted reconstruction tensor or array.
+    target : torch.Tensor
+        Reference tensor or array used as supervision.
+    known_mask : torch.Tensor
+        Binary mask that marks voxels observed in the sparse input.
+    data_range : float
+        Dynamic value range used by PSNR or SSIM computations. Defaults to 1.0.
+    
+    Returns
+    -------
+    Dict[str, float]
+        Computed summary values.
+    """
     pred = pred.float()
     target = target.float()
     known_mask = known_mask.float()
@@ -62,6 +155,29 @@ def compute_metrics_per_case(
     case_ids: Optional[Sequence[str]] = None,
     paths: Optional[Sequence[str]] = None,
 ) -> List[Dict[str, float | str]]:
+    """
+    Compute per-case reconstruction metrics for a batched prediction.
+    
+    Parameters
+    ----------
+    pred : torch.Tensor
+        Predicted reconstruction tensor or array.
+    target : torch.Tensor
+        Reference tensor or array used as supervision.
+    known_mask : torch.Tensor
+        Binary mask that marks voxels observed in the sparse input.
+    data_range : float
+        Dynamic value range used by PSNR or SSIM computations. Defaults to 1.0.
+    case_ids : Optional[Sequence[str]]
+        Case identifiers aligned with the batch dimension. Defaults to None.
+    paths : Optional[Sequence[str]]
+        Sequence of filesystem paths to process. Defaults to None.
+    
+    Returns
+    -------
+    List[Dict[str, float | str]]
+        Computed summary values.
+    """
     if pred.shape[0] != target.shape[0] or pred.shape[0] != known_mask.shape[0]:
         raise ValueError("pred, target and known_mask must have the same batch size.")
 

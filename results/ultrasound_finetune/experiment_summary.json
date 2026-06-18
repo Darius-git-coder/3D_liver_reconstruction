@@ -1,0 +1,172 @@
+﻿{
+    "experiment":  "ultrasound_probe_finetuning",
+    "source_run":  "liver_sparse_reconstruction_core/runs/ultrasound_realism_compare/thesis_ablation_best_unet128_usprobe_20260531_114414",
+    "comparison_goal":  "Compare the best thesis baseline against a finetuned model under more ultrasound-realistic slice sampling.",
+    "geometry":  {
+                     "training_slice_geometry":  "ultrasound_probe",
+                     "evaluation_slice_geometry":  "ultrasound_probe",
+                     "evaluation_slice_count":  64,
+                     "evaluation_repeats":  5
+                 },
+    "finetune":  {
+                     "epochs":  50,
+                     "learning_rate":  5E-05,
+                     "weight_decay":  5E-06,
+                     "slice_sampling":  "normal",
+                     "slice_mean":  64.0,
+                     "curriculum":  true,
+                     "amp":  true,
+                     "deterministic":  true
+                 },
+    "evaluation":  {
+                       "num_cases":  19,
+                       "eval_seeds":  [
+                                          1337,
+                                          1338,
+                                          1339,
+                                          1340,
+                                          1341
+                                      ],
+                       "models":  [
+                                      {
+                                          "label":  "thesis_ablation_best_unet",
+                                          "model":  "baseline"
+                                      },
+                                      {
+                                          "label":  "thesis_ablation_best_unet_usprobe_finetuned",
+                                          "model":  "baseline"
+                                      }
+                                  ],
+                       "key_metrics":  [
+                                           {
+                                               "label":  "thesis_ablation_best_unet",
+                                               "metric":  "mae_all",
+                                               "mean":  0.007054852610944133,
+                                               "ci95_low":  0.006257750727485641,
+                                               "ci95_high":  0.007851954494402626,
+                                               "n":  95
+                                           },
+                                           {
+                                               "label":  "thesis_ablation_best_unet",
+                                               "metric":  "mae_missing",
+                                               "mean":  0.009659981303603241,
+                                               "ci95_low":  0.0085705621570693,
+                                               "ci95_high":  0.010749400450137182,
+                                               "n":  95
+                                           },
+                                           {
+                                               "label":  "thesis_ablation_best_unet",
+                                               "metric":  "psnr_all",
+                                               "mean":  27.626733579133685,
+                                               "ci95_low":  26.876255094866277,
+                                               "ci95_high":  28.377212063401092,
+                                               "n":  95
+                                           },
+                                           {
+                                               "label":  "thesis_ablation_best_unet",
+                                               "metric":  "psnr_missing",
+                                               "mean":  26.26682267439993,
+                                               "ci95_low":  25.513104081762524,
+                                               "ci95_high":  27.020541267037334,
+                                               "n":  95
+                                           },
+                                           {
+                                               "label":  "thesis_ablation_best_unet",
+                                               "metric":  "rmse_all",
+                                               "mean":  0.04500033829949404,
+                                               "ci95_low":  0.041666723213372586,
+                                               "ci95_high":  0.0483339533856155,
+                                               "n":  95
+                                           },
+                                           {
+                                               "label":  "thesis_ablation_best_unet",
+                                               "metric":  "rmse_missing",
+                                               "mean":  0.05265229436519899,
+                                               "ci95_low":  0.04874975641283496,
+                                               "ci95_high":  0.056554832317563024,
+                                               "n":  95
+                                           },
+                                           {
+                                               "label":  "thesis_ablation_best_unet",
+                                               "metric":  "ssim_all",
+                                               "mean":  0.8659972987676922,
+                                               "ci95_low":  0.862647500246308,
+                                               "ci95_high":  0.8693470972890763,
+                                               "n":  95
+                                           },
+                                           {
+                                               "label":  "thesis_ablation_best_unet",
+                                               "metric":  "ssim_missing",
+                                               "mean":  0.8501136309222171,
+                                               "ci95_low":  0.8454292933176002,
+                                               "ci95_high":  0.8547979685268341,
+                                               "n":  95
+                                           },
+                                           {
+                                               "label":  "thesis_ablation_best_unet_usprobe_finetuned",
+                                               "metric":  "mae_all",
+                                               "mean":  0.0035075213055518503,
+                                               "ci95_low":  0.0030986502987645228,
+                                               "ci95_high":  0.003916392312339178,
+                                               "n":  95
+                                           },
+                                           {
+                                               "label":  "thesis_ablation_best_unet_usprobe_finetuned",
+                                               "metric":  "mae_missing",
+                                               "mean":  0.004805324722914711,
+                                               "ci95_low":  0.0042446361617007175,
+                                               "ci95_high":  0.005366013284128705,
+                                               "n":  95
+                                           },
+                                           {
+                                               "label":  "thesis_ablation_best_unet_usprobe_finetuned",
+                                               "metric":  "psnr_all",
+                                               "mean":  32.1285978618421,
+                                               "ci95_low":  31.381464408888554,
+                                               "ci95_high":  32.87573131479565,
+                                               "n":  95
+                                           },
+                                           {
+                                               "label":  "thesis_ablation_best_unet_usprobe_finetuned",
+                                               "metric":  "psnr_missing",
+                                               "mean":  30.768686334710374,
+                                               "ci95_low":  30.01822002288878,
+                                               "ci95_high":  31.519152646531968,
+                                               "n":  95
+                                           },
+                                           {
+                                               "label":  "thesis_ablation_best_unet_usprobe_finetuned",
+                                               "metric":  "rmse_all",
+                                               "mean":  0.02689037177907793,
+                                               "ci95_low":  0.024749724088650414,
+                                               "ci95_high":  0.029031019469505447,
+                                               "n":  95
+                                           },
+                                           {
+                                               "label":  "thesis_ablation_best_unet_usprobe_finetuned",
+                                               "metric":  "rmse_missing",
+                                               "mean":  0.03146642469065754,
+                                               "ci95_low":  0.02895663346558434,
+                                               "ci95_high":  0.03397621591573073,
+                                               "n":  95
+                                           },
+                                           {
+                                               "label":  "thesis_ablation_best_unet_usprobe_finetuned",
+                                               "metric":  "ssim_all",
+                                               "mean":  0.8798676998991716,
+                                               "ci95_low":  0.8772519645846829,
+                                               "ci95_high":  0.8824834352136602,
+                                               "n":  95
+                                           },
+                                           {
+                                               "label":  "thesis_ablation_best_unet_usprobe_finetuned",
+                                               "metric":  "ssim_missing",
+                                               "mean":  0.867825132294705,
+                                               "ci95_low":  0.8640604719489745,
+                                               "ci95_high":  0.8715897926404356,
+                                               "n":  95
+                                           }
+                                       ]
+                   },
+    "qualitative_cases":  "qualitative_cases.json"
+}

@@ -1,0 +1,93 @@
+﻿{
+    "experiment":  "slice_count_distribution",
+    "source_run":  "runs/liver_inpainting_partial/20260508_072434_newloss_dim128/Evaluierung_Slice_Verteilung",
+    "protocol":  {
+                     "slice_sampling":  "uniform",
+                     "slice_counts":  [
+                                          32,
+                                          64,
+                                          128
+                                      ],
+                     "dim":  128,
+                     "thickness_vox":  1
+                 },
+    "aggregate_metrics":  [
+                              {
+                                  "slices":  32,
+                                  "metrics":  {
+                                                  "mae_missing":  0.0015394571285772447,
+                                                  "rmse_missing":  0.011621434615473405,
+                                                  "psnr_missing":  39.07029787699381,
+                                                  "ssim_all":  0.9030988180276119,
+                                                  "ssim_missing":  0.8984317382176717,
+                                                  "num_cases":  131
+                                              }
+                              },
+                              {
+                                  "slices":  64,
+                                  "metrics":  {
+                                                  "mae_missing":  0.0010155965305095765,
+                                                  "rmse_missing":  0.008790693168217937,
+                                                  "psnr_missing":  41.56774295460094,
+                                                  "ssim_all":  0.9076898188302012,
+                                                  "ssim_missing":  0.9012771293972478,
+                                                  "num_cases":  131
+                                              }
+                              },
+                              {
+                                  "slices":  128,
+                                  "metrics":  {
+                                                  "mae_missing":  0.0006129155870329475,
+                                                  "rmse_missing":  0.007039641890900604,
+                                                  "psnr_missing":  43.60233624776205,
+                                                  "ssim_all":  0.9096884935191183,
+                                                  "ssim_missing":  0.9014107621077335,
+                                                  "num_cases":  131
+                                              }
+                              }
+                          ],
+    "comparison_64_unet_vs_regression":  {
+                                             "unet":  {
+                                                          "mae_all":  0.0004373425035737455,
+                                                          "rmse_all":  0.005782771855592728,
+                                                          "psnr_all":  44.75727844238281,
+                                                          "ssim_all":  0.9103549122810364,
+                                                          "mae_known":  3.3274633048918645E-10,
+                                                          "rmse_known":  1.0000055681302911E-06,
+                                                          "psnr_known":  119.99995422363281,
+                                                          "ssim_known":  0.9145788550376892,
+                                                          "mae_missing":  0.001307896920479834,
+                                                          "rmse_missing":  0.010000278241932392,
+                                                          "psnr_missing":  39.999759674072266,
+                                                          "ssim_missing":  0.9019473791122437
+                                                      },
+                                             "regression":  {
+                                                                "mae_all":  0.0011418834328651428,
+                                                                "rmse_all":  0.010998249985277653,
+                                                                "psnr_all":  39.17353057861328,
+                                                                "ssim_all":  0.9031178951263428,
+                                                                "mae_known":  3.3274633048918645E-10,
+                                                                "rmse_known":  1.0000055681302911E-06,
+                                                                "psnr_known":  119.99995422363281,
+                                                                "ssim_known":  0.9084153175354004,
+                                                                "mae_missing":  0.0034148667473345995,
+                                                                "rmse_missing":  0.01901952363550663,
+                                                                "psnr_missing":  34.41600799560547,
+                                                                "ssim_missing":  0.8925734162330627
+                                                            }
+                                         },
+    "appendix_figures":  [
+                             "appendix_figures/comparison_mip_64.png",
+                             "appendix_figures/comparison_density_no_background_64.png",
+                             "appendix_figures/mip_check_32.png",
+                             "appendix_figures/mip_check_128.png"
+                         ],
+    "fixed_split_snapshot":  {
+                                 "split_case_ids":  "fixed_split_case_ids.json",
+                                 "summary_files":  [
+                                                       "fixed_split_eval/slices_32/metrics_summary.json",
+                                                       "fixed_split_eval/slices_64/metrics_summary.json",
+                                                       "fixed_split_eval/slices_128/metrics_summary.json"
+                                                   ]
+                             }
+}

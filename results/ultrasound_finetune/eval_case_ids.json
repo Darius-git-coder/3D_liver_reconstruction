@@ -1,0 +1,16 @@
+﻿{
+    "label":  "ultrasound_eval_split",
+    "num_total":  null,
+    "num_train":  null,
+    "num_val":  null,
+    "num_test":  null,
+    "train_case_ids":  [
+                           ""
+                       ],
+    "val_case_ids":  [
+                         ""
+                     ],
+    "test_case_ids":  [
+                          ""
+                      ]
+}

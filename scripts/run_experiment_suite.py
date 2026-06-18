@@ -18,11 +18,41 @@ from inpainting3d.stats import summary_rows_from_nested
 
 
 def save_json(path: str, payload: dict) -> None:
+    """
+    Write a JSON document to disk.
+    
+    Parameters
+    ----------
+    path : str
+        Filesystem path to the input artifact.
+    payload : dict
+        Structured data that will be serialized as JSON.
+    
+    Returns
+    -------
+    None
+        The JSON artifact is written to disk.
+    """
     with open(path, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2, ensure_ascii=False)
 
 
 def write_rows_csv(path: str, rows: List[Dict[str, Any]]) -> None:
+    """
+    Write row dictionaries to a CSV file.
+    
+    Parameters
+    ----------
+    path : str
+        Filesystem path to the input artifact.
+    rows : List[Dict[str, Any]]
+        Row dictionaries that should be written or summarized.
+    
+    Returns
+    -------
+    None
+        The CSV artifact is written to disk.
+    """
     if not rows:
         return
     fieldnames: List[str] = []
@@ -55,11 +85,39 @@ EVAL_INHERITED_KEYS = ("init_feat",)
 
 
 def load_config(path: str) -> Dict[str, Any]:
+    """
+    Load an experiment-suite configuration file.
+    
+    Parameters
+    ----------
+    path : str
+        Filesystem path to the input artifact.
+    
+    Returns
+    -------
+    Dict[str, Any]
+        Loaded data structure.
+    """
     with open(path, "r", encoding="utf-8") as handle:
         return json.load(handle)
 
 
 def merge_dicts(base: Dict[str, Any], updates: Dict[str, Any] | None) -> Dict[str, Any]:
+    """
+    Merge dictionaries recursively or by overwrite semantics.
+    
+    Parameters
+    ----------
+    base : Dict[str, Any]
+        Base dictionary or configuration object.
+    updates : Dict[str, Any] | None
+        Updated values merged into a base dictionary.
+    
+    Returns
+    -------
+    Dict[str, Any]
+        Merged dicts.
+    """
     merged = deepcopy(base)
     if updates:
         merged.update(updates)
@@ -73,6 +131,25 @@ def append_cli_args(
     positive_bool_flags: Dict[str, str] | None = None,
     negative_bool_flags: Dict[str, str] | None = None,
 ) -> None:
+    """
+    Append command-line arguments derived from a configuration dictionary.
+    
+    Parameters
+    ----------
+    command : List[str]
+        Command sequence that should be executed or recorded.
+    values : Dict[str, Any]
+        Numeric values that should be summarized.
+    positive_bool_flags : Dict[str, str] | None
+        Boolean flags that are appended when their values are true. Defaults to None.
+    negative_bool_flags : Dict[str, str] | None
+        Boolean flags that are appended when their values are false. Defaults to None.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     positive_bool_flags = positive_bool_flags or {}
     negative_bool_flags = negative_bool_flags or {}
 
@@ -91,10 +168,33 @@ def append_cli_args(
 
 
 def run_command(command: Iterable[str], cwd: str) -> None:
+    """
+    Run a subprocess command for an experiment step.
+    
+    Parameters
+    ----------
+    command : Iterable[str]
+        Command sequence that should be executed or recorded.
+    cwd : str
+        Working directory used for command execution or metadata lookup.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     subprocess.run(list(command), cwd=cwd, check=True)
 
 
 def main() -> None:
+    """
+    Execute the command-line entry point for this script.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", type=str, required=True)
     ap.add_argument("--skip_train", action="store_true")

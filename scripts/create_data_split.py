@@ -13,6 +13,21 @@ from inpainting3d.splits import create_split_manifest, resolve_case_paths, write
 
 
 def save_json(path: str, payload: dict) -> None:
+    """
+    Write a JSON document to disk.
+    
+    Parameters
+    ----------
+    path : str
+        Filesystem path to the input artifact.
+    payload : dict
+        Structured data that will be serialized as JSON.
+    
+    Returns
+    -------
+    None
+        The JSON artifact is written to disk.
+    """
     with open(path, "w", encoding="utf-8") as handle:
         import json
 
@@ -20,6 +35,14 @@ def save_json(path: str, payload: dict) -> None:
 
 
 def main() -> None:
+    """
+    Execute the command-line entry point for this script.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", type=str, required=True)
     ap.add_argument("--out", type=str, default="./runs/data_split.json")

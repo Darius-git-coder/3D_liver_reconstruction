@@ -2,23 +2,41 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
-*.log
+*.so
 
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
 htmlcov/
+.ipynb_checkpoints/
 
 .venv/
 venv/
 env/
-data/
+.python-version
+
+.vscode/
+.idea/
+.env
+.env.*
 
 runs/
 outputs/
+artifacts/
+reports/
+logs/
+checkpoints/
+samples/
+data/
 *.pt
 *.pth
+*.onnx
+*.npy
+*.npz
+*.nii
+*.nii.gz
+*.log
 configs/*.local*.json
 
 .DS_Store

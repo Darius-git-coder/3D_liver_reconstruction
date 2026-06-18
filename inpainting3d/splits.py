@@ -14,14 +14,53 @@ DEFAULT_SPLIT_NAMES = ("train", "val", "test")
 
 
 def normalize_case_path(path: str) -> str:
+    """
+    Normalize a case path into an absolute canonical form.
+    
+    Parameters
+    ----------
+    path : str
+        Filesystem path to the input artifact.
+    
+    Returns
+    -------
+    str
+        Normalized or derived path.
+    """
     return os.path.normpath(os.path.abspath(path))
 
 
 def resolve_case_paths(pattern: str) -> List[str]:
+    """
+    Resolve and sort case paths from a glob pattern.
+    
+    Parameters
+    ----------
+    pattern : str
+        Glob pattern used to discover input files.
+    
+    Returns
+    -------
+    List[str]
+        Resolved value or selection.
+    """
     return sorted(normalize_case_path(path) for path in glob.glob(pattern))
 
 
 def case_id_from_path(path: str) -> str:
+    """
+    Derive a case identifier from a volume file path.
+    
+    Parameters
+    ----------
+    path : str
+        Filesystem path to the input artifact.
+    
+    Returns
+    -------
+    str
+        Case identifier derived from the input path.
+    """
     name = os.path.basename(path)
     for suffix in (".nii.gz", ".nii", ".mha", ".mhd", ".nrrd"):
         if name.endswith(suffix):
@@ -31,6 +70,21 @@ def case_id_from_path(path: str) -> str:
 
 
 def _allocate_counts(num_cases: int, ratios: Mapping[str, float]) -> Dict[str, int]:
+    """
+    Allocate split counts that match the requested ratios as closely as possible.
+    
+    Parameters
+    ----------
+    num_cases : int
+        Maximum number of cases to select.
+    ratios : Mapping[str, float]
+        Mapping from split names to target ratios.
+    
+    Returns
+    -------
+    Dict[str, int]
+        Allocated case counts for each requested split.
+    """
     if num_cases <= 0:
         raise ValueError("Cannot create a split without cases.")
 
@@ -85,6 +139,33 @@ def create_split_manifest(
     project_root: str | None = None,
     git_info: Mapping[str, object] | None = None,
 ) -> Dict[str, object]:
+    """
+    Create a manifest that records deterministic train, validation, and test splits.
+    
+    Parameters
+    ----------
+    files : Sequence[str]
+        Sequence of input case files.
+    seed : int
+        Random seed used for reproducible sampling. Defaults to 1337.
+    train_ratio : float
+        Relative fraction assigned to the training split. Defaults to 0.7.
+    val_ratio : float
+        Relative fraction assigned to the validation split. Defaults to 0.15.
+    test_ratio : float
+        Relative fraction assigned to the test split. Defaults to 0.15.
+    source_glob : str | None
+        Original glob pattern used to collect the cases. Defaults to None.
+    project_root : str | None
+        Project root recorded in the manifest. Defaults to None.
+    git_info : Mapping[str, object] | None
+        Optional git metadata stored in the manifest. Defaults to None.
+    
+    Returns
+    -------
+    Dict[str, object]
+        Newly created object or artifact.
+    """
     normalized_files = [normalize_case_path(path) for path in files]
     unique_files = sorted(dict.fromkeys(normalized_files))
     if len(unique_files) != len(normalized_files):
@@ -140,6 +221,19 @@ def create_split_manifest(
 
 
 def load_split_manifest(path: str) -> Dict[str, object]:
+    """
+    Load and normalize a split manifest from disk.
+    
+    Parameters
+    ----------
+    path : str
+        Filesystem path to the input artifact.
+    
+    Returns
+    -------
+    Dict[str, object]
+        Loaded data structure.
+    """
     with open(path, "r", encoding="utf-8") as handle:
         manifest = json.load(handle)
 
@@ -158,6 +252,21 @@ def load_split_manifest(path: str) -> Dict[str, object]:
 
 
 def get_split_files(manifest: Mapping[str, object], split_name: str) -> List[str]:
+    """
+    Return the case paths for a named split.
+    
+    Parameters
+    ----------
+    manifest : Mapping[str, object]
+        Split or evaluation manifest to serialize or inspect.
+    split_name : str
+        Name of the requested data split.
+    
+    Returns
+    -------
+    List[str]
+        Normalized case paths for the requested split.
+    """
     splits = manifest.get("splits", {})
     if not isinstance(splits, dict):
         raise ValueError("Split manifest does not contain a 'splits' mapping.")
@@ -171,6 +280,21 @@ def get_split_files(manifest: Mapping[str, object], split_name: str) -> List[str
 
 
 def filter_to_known_files(paths: Iterable[str], available_files: Sequence[str]) -> List[str]:
+    """
+    Validate that all referenced split files exist in the current file set.
+    
+    Parameters
+    ----------
+    paths : Iterable[str]
+        Sequence of filesystem paths to process.
+    available_files : Sequence[str]
+        Files that are currently available for the dataset.
+    
+    Returns
+    -------
+    List[str]
+        Selected filesystem paths.
+    """
     available = {normalize_case_path(path) for path in available_files}
     resolved = [normalize_case_path(path) for path in paths]
     missing = [path for path in resolved if path not in available]
@@ -184,6 +308,21 @@ def filter_to_known_files(paths: Iterable[str], available_files: Sequence[str]) 
 
 
 def write_split_manifest(manifest: Mapping[str, object], out_path: str) -> None:
+    """
+    Write a split manifest and plain-text split lists to disk.
+    
+    Parameters
+    ----------
+    manifest : Mapping[str, object]
+        Split or evaluation manifest to serialize or inspect.
+    out_path : str
+        Destination path for the written artifact.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     out_dir = os.path.dirname(out_path)
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)

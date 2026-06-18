@@ -1,0 +1,17 @@
+{
+  "regularization": {
+    "readme": "regularization/README.md",
+    "summary": "regularization/study_summary.json",
+    "selected_cases": "regularization/selected_cases.csv"
+  },
+  "slice_distribution": {
+    "readme": "slice_distribution/README.md",
+    "summary": "slice_distribution/evaluation_summary.json",
+    "fixed_split_case_ids": "slice_distribution/fixed_split_case_ids.json"
+  },
+  "ultrasound_finetune": {
+    "readme": "ultrasound_finetune/README.md",
+    "summary": "ultrasound_finetune/experiment_summary.json",
+    "qualitative_cases": "ultrasound_finetune/qualitative_cases.json"
+  }
+}

@@ -11,6 +11,19 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def load_json(path: str) -> Dict[str, Any]:
+    """
+    Load a JSON document from disk.
+    
+    Parameters
+    ----------
+    path : str
+        Filesystem path to the input artifact.
+    
+    Returns
+    -------
+    Dict[str, Any]
+        Loaded data structure.
+    """
     with open(path, "r", encoding="utf-8") as handle:
         payload = json.load(handle)
     if not isinstance(payload, dict):
@@ -19,12 +32,46 @@ def load_json(path: str) -> Dict[str, Any]:
 
 
 def append_scalar_arg(command: List[str], flag: str, value: Any) -> None:
+    """
+    Append a scalar command-line argument when a value is available.
+    
+    Parameters
+    ----------
+    command : List[str]
+        Command sequence that should be executed or recorded.
+    flag : str
+        Command-line flag that should be appended to a command.
+    value : Any
+        Scalar value processed by the helper.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     if value is None:
         return
     command.extend([flag, str(value)])
 
 
 def append_vector_arg(command: List[str], flag: str, values: Iterable[Any] | None) -> None:
+    """
+    Append a vector command-line argument when values are available.
+    
+    Parameters
+    ----------
+    command : List[str]
+        Command sequence that should be executed or recorded.
+    flag : str
+        Command-line flag that should be appended to a command.
+    values : Iterable[Any] | None
+        Numeric values that should be summarized.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     if values is None:
         return
     values = list(values)
@@ -35,6 +82,25 @@ def append_vector_arg(command: List[str], flag: str, values: Iterable[Any] | Non
 
 
 def build_eval_command(*, python_exe: str, out_dir: str, slices: int, repro: Dict[str, Any]) -> List[str]:
+    """
+    Build the command line for an evaluation run.
+    
+    Parameters
+    ----------
+    python_exe : str
+        Python executable used when invoking a subprocess workflow.
+    out_dir : str
+        Destination directory for generated outputs.
+    slices : int
+        Number of slice planes to sample.
+    repro : Dict[str, Any]
+        Reproducibility metadata or payload.
+    
+    Returns
+    -------
+    List[str]
+        Constructed object ready for downstream use.
+    """
     args_payload = repro.get("args")
     extra = repro.get("extra")
     if not isinstance(args_payload, dict):
@@ -120,6 +186,23 @@ def build_eval_command(*, python_exe: str, out_dir: str, slices: int, repro: Dic
 
 
 def build_export_command(*, python_exe: str, eval_dir: str, out_dir: str) -> List[str]:
+    """
+    Build the command line for the qualitative export step.
+    
+    Parameters
+    ----------
+    python_exe : str
+        Python executable used when invoking a subprocess workflow.
+    eval_dir : str
+        Requested evaluation dir.
+    out_dir : str
+        Destination directory for generated outputs.
+    
+    Returns
+    -------
+    List[str]
+        Constructed object ready for downstream use.
+    """
     script_path = os.path.join(ROOT, "scripts", "export_thesis_qualitative_figures.py")
     return [
         python_exe,
@@ -132,6 +215,14 @@ def build_export_command(*, python_exe: str, eval_dir: str, out_dir: str) -> Lis
 
 
 def main() -> None:
+    """
+    Execute the command-line entry point for this script.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--reference_eval_dir", type=str, required=True)
     ap.add_argument("--slices", type=int, nargs="+", required=True)

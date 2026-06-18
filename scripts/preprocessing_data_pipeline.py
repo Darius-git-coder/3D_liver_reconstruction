@@ -42,7 +42,19 @@ DEFAULT_OUTPUT_ROOT = Path("./data")
 
 
 def load_nifti_volume(file_path: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Load a NIfTI file and convert it to canonical RAS+ orientation."""
+    """
+    Load a NIfTI volume and return its image data.
+    
+    Parameters
+    ----------
+    file_path : Path
+        Filesystem path to the input file.
+    
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray, np.ndarray]
+        Loaded data structure.
+    """
     nii = nib.load(str(file_path))
     nii = nib.as_closest_canonical(nii)
     volume = np.asarray(nii.dataobj, dtype=np.float32)
@@ -56,7 +68,25 @@ def normalize_ct_volume(
     min_hu: float = DEFAULT_MIN_HU,
     max_hu: float = DEFAULT_MAX_HU,
 ) -> np.ndarray:
-    """Apply HU clipping and linear scaling to ``[0, 1]``."""
+    """
+    Window CT intensities and map them into the unit interval.
+    
+    Parameters
+    ----------
+    volume : np.ndarray
+        Input volume array.
+    mask : np.ndarray | None
+        Binary mask that marks valid or selected voxels. Defaults to None.
+    min_hu : float
+        Lower CT window bound in Hounsfield units. Defaults to DEFAULT_MIN_HU.
+    max_hu : float
+        Upper CT window bound in Hounsfield units. Defaults to DEFAULT_MAX_HU.
+    
+    Returns
+    -------
+    np.ndarray
+        Processed volume data.
+    """
     img = np.clip(volume, min_hu, max_hu)
     img = (img - min_hu) / (max_hu - min_hu)
     if mask is not None:
@@ -65,7 +95,21 @@ def normalize_ct_volume(
 
 
 def pca_align_volume(volume: np.ndarray, threshold: float = DEFAULT_THRESHOLD) -> np.ndarray:
-    """Align the foreground with its principal axes."""
+    """
+    Align a foreground object with its principal axes.
+    
+    Parameters
+    ----------
+    volume : np.ndarray
+        Input volume array.
+    threshold : float
+        Threshold used to define the foreground region. Defaults to DEFAULT_THRESHOLD.
+    
+    Returns
+    -------
+    np.ndarray
+        PCA-aligned volume.
+    """
     coords = np.argwhere(volume > threshold)
     if len(coords) < 10:
         return volume
@@ -89,7 +133,25 @@ def crop_and_pad_volume(
     margin: int = DEFAULT_MARGIN,
     padding: int = DEFAULT_PADDING,
 ) -> np.ndarray:
-    """Crop to the foreground support and add a safety border."""
+    """
+    Crop a volume to its foreground support and add padding.
+    
+    Parameters
+    ----------
+    volume : np.ndarray
+        Input volume array.
+    threshold : float
+        Threshold used to define the foreground region. Defaults to DEFAULT_THRESHOLD.
+    margin : int
+        Margin added around the detected foreground support. Defaults to DEFAULT_MARGIN.
+    padding : int
+        Convolution padding. Defaults to DEFAULT_PADDING.
+    
+    Returns
+    -------
+    np.ndarray
+        Cropped and padded volume.
+    """
     mask = volume > threshold
     coords = np.argwhere(mask)
     if coords.size == 0:
@@ -113,7 +175,21 @@ def crop_and_pad_volume(
 
 
 def resample_isometric(img: np.ndarray, target_dim: int) -> tuple[np.ndarray, dict[str, object]]:
-    """Scale isotropically and embed the result in a centered target cube."""
+    """
+    Scale a volume isometrically into a cubic target grid.
+    
+    Parameters
+    ----------
+    img : np.ndarray
+        Input image or volume array.
+    target_dim : int
+        Target cubic side length of the processed volume.
+    
+    Returns
+    -------
+    tuple[np.ndarray, dict[str, object]]
+        Resampled isometric.
+    """
     target_shape = (target_dim, target_dim, target_dim)
     scale_factor = min(t / s for t, s in zip(target_shape, img.shape))
     img_rescaled = zoom(img, scale_factor, order=1)
@@ -136,7 +212,19 @@ def resample_isometric(img: np.ndarray, target_dim: int) -> tuple[np.ndarray, di
 
 
 def resolve_output_dir(args: argparse.Namespace) -> Path:
-    """Resolve the output directory from CLI arguments."""
+    """
+    Resolve the output directory for preprocessing artifacts.
+    
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Arguments passed to the helper or command.
+    
+    Returns
+    -------
+    Path
+        Resolved value or selection.
+    """
     if args.output_dir:
         return Path(args.output_dir)
 
@@ -145,7 +233,19 @@ def resolve_output_dir(args: argparse.Namespace) -> Path:
 
 
 def process_dataset(args: argparse.Namespace) -> None:
-    """Run the full preprocessing pipeline on a directory of NIfTI files."""
+    """
+    Preprocess a dataset of liver volumes into the target representation.
+    
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Arguments passed to the helper or command.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     input_path = Path(args.source)
     output_path = resolve_output_dir(args)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -218,7 +318,14 @@ def process_dataset(args: argparse.Namespace) -> None:
 
 
 def build_argparser() -> argparse.ArgumentParser:
-    """Create the CLI parser."""
+    """
+    Build the command-line argument parser for this script.
+    
+    Returns
+    -------
+    argparse.ArgumentParser
+        Constructed object ready for downstream use.
+    """
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--source", type=str, required=True, help="Directory containing liver-focused *.nii.gz volumes.")
     ap.add_argument(
@@ -231,7 +338,7 @@ def build_argparser() -> argparse.ArgumentParser:
         "--output_root",
         type=str,
         default=str(DEFAULT_OUTPUT_ROOT),
-        help="Root directory used when --output_dir is omitted.",
+        help="Root directory used when --output_dir is omitted. Defaults to ./data relative to the repository root.",
     )
     ap.add_argument("--pattern", type=str, default="*.nii.gz", help="Glob pattern for source files.")
     ap.add_argument("--target_dim", type=int, default=DEFAULT_TARGET_DIM, help="Target cube edge length.")

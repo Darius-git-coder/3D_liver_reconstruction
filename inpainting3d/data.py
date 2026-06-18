@@ -14,8 +14,21 @@ def load_nifti_volume(
     dtype: np.dtype = np.float32,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Load a NIfTI volume as numpy array.
-    Returns: (volume, affine)
+    Load a NIfTI volume and return its image data.
+    
+    Parameters
+    ----------
+    path : str
+        Filesystem path to the input artifact.
+    canonical : bool
+        Whether the loaded image should be reoriented to canonical axes. Defaults to True.
+    dtype : np.dtype
+        Data type used when constructing arrays or tensors. Defaults to np.float32.
+    
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        Loaded data structure.
     """
     try:
         import nibabel as nib
@@ -34,7 +47,19 @@ def load_nifti_volume(
 
 def normalize_volume(vol: np.ndarray, method: str = "clip01") -> np.ndarray:
     """
-    Normalize intensities into a stable [0, 1]-like range.
+    Normalize volumetric intensities into the configured range.
+    
+    Parameters
+    ----------
+    vol : np.ndarray
+        Input volume array.
+    method : str
+        Normalization method identifier. Defaults to "clip01".
+    
+    Returns
+    -------
+    np.ndarray
+        Processed volume data.
     """
     vol = vol.astype(np.float32)
 
@@ -62,7 +87,21 @@ def normalize_volume(vol: np.ndarray, method: str = "clip01") -> np.ndarray:
 
 def resample_to_shape(vol: np.ndarray, target_shape: Tuple[int, int, int], order: int = 1) -> np.ndarray:
     """
-    Resample to target shape. order=1 for volumes, order=0 for masks.
+    Resample a volume to the requested spatial shape.
+    
+    Parameters
+    ----------
+    vol : np.ndarray
+        Input volume array.
+    target_shape : Tuple[int, int, int]
+        Desired output volume shape.
+    order : int
+        Interpolation order used for resampling or affine transforms. Defaults to 1.
+    
+    Returns
+    -------
+    np.ndarray
+        Resampled to shape.
     """
     if vol.shape == target_shape:
         return vol
@@ -71,6 +110,21 @@ def resample_to_shape(vol: np.ndarray, target_shape: Tuple[int, int, int], order
 
 
 def center_of_mass_threshold(vol: np.ndarray, thr: float = 0.1) -> np.ndarray:
+    """
+    Estimate the foreground center of mass with thresholding.
+    
+    Parameters
+    ----------
+    vol : np.ndarray
+        Input volume array.
+    thr : float
+        Threshold used to define the foreground region. Defaults to 0.1.
+    
+    Returns
+    -------
+    np.ndarray
+        Estimated of mass threshold.
+    """
     coords = np.argwhere(vol > thr)
     if coords.shape[0] < 10:
         return np.array([(s - 1) / 2 for s in vol.shape], dtype=np.float32)
@@ -78,6 +132,21 @@ def center_of_mass_threshold(vol: np.ndarray, thr: float = 0.1) -> np.ndarray:
 
 
 def foreground_bbox_threshold(vol: np.ndarray, thr: float = 0.1) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Compute a foreground bounding box from thresholded voxels.
+    
+    Parameters
+    ----------
+    vol : np.ndarray
+        Input volume array.
+    thr : float
+        Threshold used to define the foreground region. Defaults to 0.1.
+    
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        Detected bounding box threshold.
+    """
     coords = np.argwhere(vol > thr)
     if coords.shape[0] < 10:
         bbox_min = np.zeros((3,), dtype=np.float32)
@@ -88,7 +157,17 @@ def foreground_bbox_threshold(vol: np.ndarray, thr: float = 0.1) -> Tuple[np.nda
 
 def fibonacci_normals(n: int) -> np.ndarray:
     """
-    Approximately uniform directions on the sphere.
+    Generate approximately uniform normals on the sphere.
+    
+    Parameters
+    ----------
+    n : int
+        Number of elements, slices, or directions to generate.
+    
+    Returns
+    -------
+    np.ndarray
+        Approximately uniform unit normals with shape (n, 3).
     """
     idx = np.arange(n, dtype=np.float32) + 0.5
     phi = np.arccos(1 - 2 * idx / n)
@@ -102,12 +181,42 @@ def fibonacci_normals(n: int) -> np.ndarray:
 
 
 def random_normals(n: int, rng: np.random.Generator) -> np.ndarray:
+    """
+    Sample random unit normals on the sphere.
+    
+    Parameters
+    ----------
+    n : int
+        Number of elements, slices, or directions to generate.
+    rng : np.random.Generator
+        Random number generator used for stochastic sampling.
+    
+    Returns
+    -------
+    np.ndarray
+        Randomly sampled unit normals with shape (n, 3).
+    """
     normals = rng.normal(size=(n, 3)).astype(np.float32)
     normals /= np.linalg.norm(normals, axis=1, keepdims=True) + 1e-8
     return normals
 
 
 def _normalize_vector(vec: Sequence[float], *, fallback: Sequence[float] = (0.0, 0.0, 1.0)) -> np.ndarray:
+    """
+    Normalize a three-dimensional vector with a fallback direction.
+    
+    Parameters
+    ----------
+    vec : Sequence[float]
+        Vector to normalize.
+    fallback : Sequence[float]
+        Fallback vector used when the input vector is degenerate. Defaults to (0.0, 0.0, 1.0).
+    
+    Returns
+    -------
+    np.ndarray
+        Normalized vector.
+    """
     arr = np.asarray(vec, dtype=np.float32).reshape(-1)
     if arr.size != 3:
         raise ValueError(f"Expected a 3D vector, got shape {tuple(arr.shape)}.")
@@ -119,6 +228,19 @@ def _normalize_vector(vec: Sequence[float], *, fallback: Sequence[float] = (0.0,
 
 
 def _orthonormal_basis(direction: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Construct an orthonormal basis around a direction vector.
+    
+    Parameters
+    ----------
+    direction : np.ndarray
+        Direction vector used to build a local basis.
+    
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        Two orthonormal basis vectors spanning the plane perpendicular to the input direction.
+    """
     direction = _normalize_vector(direction)
     reference = np.array([1.0, 0.0, 0.0], dtype=np.float32)
     if abs(float(np.dot(direction, reference))) > 0.9:
@@ -141,7 +263,29 @@ def sample_ultrasound_fan_normals(
     sweep_jitter_deg: float = 2.5,
 ) -> np.ndarray:
     """
-    Limited fan of directions around one dominant axis.
+    Sample slice normals from a fan-shaped ultrasound acquisition model.
+    
+    Parameters
+    ----------
+    n : int
+        Number of elements, slices, or directions to generate.
+    rng : np.random.Generator
+        Random number generator used for stochastic sampling.
+    preferred_axis : Sequence[float] | None
+        Preferred probe or slice axis in voxel coordinates. Defaults to None.
+    axis_jitter_deg : float
+        Standard deviation of the dominant-axis jitter in degrees. Defaults to 25.0.
+    fan_half_angle_deg : float
+        Half opening angle of the simulated ultrasound fan in degrees. Defaults to 35.0.
+    elevation_jitter_deg : float
+        Standard deviation of out-of-plane jitter in degrees. Defaults to 6.0.
+    sweep_jitter_deg : float
+        Standard deviation of in-plane sweep jitter in degrees. Defaults to 2.5.
+    
+    Returns
+    -------
+    np.ndarray
+        Sampled values in the requested representation.
     """
     if n <= 0:
         raise ValueError(f"n must be >= 1, got {n}.")
@@ -184,6 +328,21 @@ def sample_ultrasound_fan_normals(
 
 
 def _bbox_corners(bbox_min: np.ndarray, bbox_max: np.ndarray) -> np.ndarray:
+    """
+    Enumerate the corner points of a 3D bounding box.
+    
+    Parameters
+    ----------
+    bbox_min : np.ndarray
+        Lower corner of a foreground bounding box.
+    bbox_max : np.ndarray
+        Upper corner of a foreground bounding box.
+    
+    Returns
+    -------
+    np.ndarray
+        Bounding-box corner coordinates with shape (8, 3).
+    """
     return np.asarray(
         [
             [bbox_min[0], bbox_min[1], bbox_min[2]],
@@ -207,6 +366,27 @@ def _sample_axis_positions(
     *,
     ordered: bool,
 ) -> np.ndarray:
+    """
+    Sample positions along one bounding-box axis.
+    
+    Parameters
+    ----------
+    count : int
+        Number of positions to sample.
+    lo : float
+        Lower bound of the sampling interval.
+    hi : float
+        Upper bound of the sampling interval.
+    rng : np.random.Generator
+        Random number generator used for stochastic sampling.
+    ordered : bool
+        Whether sampled positions should preserve sorted order.
+    
+    Returns
+    -------
+    np.ndarray
+        Sampled axis positions.
+    """
     if count <= 0:
         return np.zeros((0,), dtype=np.float32)
     if count == 1:
@@ -231,9 +411,37 @@ def sample_cross_axis_probe_geometry_bbox(
     ordered: bool = True,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
-    Approximate a translated freehand ultrasound sweep with two principal passes.
-
-    Each plane is defined by a point p_i and a normal n_i.
+    Sample translated probe planes inside a foreground bounding box.
+    
+    Parameters
+    ----------
+    n : int
+        Number of elements, slices, or directions to generate.
+    bbox_min : np.ndarray
+        Lower corner of a foreground bounding box.
+    bbox_max : np.ndarray
+        Upper corner of a foreground bounding box.
+    center : np.ndarray
+        Foreground center expressed in voxel coordinates.
+    rng : np.random.Generator
+        Random number generator used for stochastic sampling.
+    preferred_axis : Sequence[float] | None
+        Preferred probe or slice axis in voxel coordinates. Defaults to None.
+    axis_jitter_deg : float
+        Standard deviation of the dominant-axis jitter in degrees. Defaults to 20.0.
+    pos_sigma_vox : float
+        Standard deviation of probe-position jitter in voxels. Defaults to 1.0.
+    depth_sigma_vox : float
+        Standard deviation of depth jitter in voxels. Defaults to 6.0.
+    tilt_sigma : float
+        Standard deviation of probe tilt perturbations. Defaults to 0.08.
+    ordered : bool
+        Whether sampled positions should preserve sorted order. Defaults to True.
+    
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray, np.ndarray]
+        Sampled values in the requested representation.
     """
     if n <= 0:
         raise ValueError(f"n must be >= 1, got {n}.")
@@ -330,6 +538,33 @@ def sample_slice_normals(
     elevation_jitter_deg: float = 6.0,
     sweep_jitter_deg: float = 2.5,
 ) -> np.ndarray:
+    """
+    Sample slice normals according to the configured acquisition strategy.
+    
+    Parameters
+    ----------
+    n : int
+        Number of elements, slices, or directions to generate.
+    rng : np.random.Generator
+        Random number generator used for stochastic sampling.
+    strategy : str
+        Sampling or evaluation strategy identifier. Defaults to "random".
+    preferred_axis : Sequence[float] | None
+        Preferred probe or slice axis in voxel coordinates. Defaults to None.
+    axis_jitter_deg : float
+        Standard deviation of the dominant-axis jitter in degrees. Defaults to 25.0.
+    fan_half_angle_deg : float
+        Half opening angle of the simulated ultrasound fan in degrees. Defaults to 35.0.
+    elevation_jitter_deg : float
+        Standard deviation of out-of-plane jitter in degrees. Defaults to 6.0.
+    sweep_jitter_deg : float
+        Standard deviation of in-plane sweep jitter in degrees. Defaults to 2.5.
+    
+    Returns
+    -------
+    np.ndarray
+        Sampled values in the requested representation.
+    """
     strategy = str(strategy).strip().lower()
     if strategy == "random":
         return random_normals(n, rng)
@@ -365,6 +600,45 @@ def sample_slice_planes(
     probe_depth_sigma_vox: float = 6.0,
     probe_tilt_sigma: float = 0.08,
 ) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Sample slice planes for sparse acquisition simulation.
+    
+    Parameters
+    ----------
+    n : int
+        Number of elements, slices, or directions to generate.
+    rng : np.random.Generator
+        Random number generator used for stochastic sampling.
+    strategy : str
+        Sampling or evaluation strategy identifier. Defaults to "random".
+    center : np.ndarray
+        Foreground center expressed in voxel coordinates.
+    bbox_min : np.ndarray
+        Lower corner of a foreground bounding box.
+    bbox_max : np.ndarray
+        Upper corner of a foreground bounding box.
+    preferred_axis : Sequence[float] | None
+        Preferred probe or slice axis in voxel coordinates. Defaults to None.
+    axis_jitter_deg : float
+        Standard deviation of the dominant-axis jitter in degrees. Defaults to 25.0.
+    fan_half_angle_deg : float
+        Half opening angle of the simulated ultrasound fan in degrees. Defaults to 35.0.
+    elevation_jitter_deg : float
+        Standard deviation of out-of-plane jitter in degrees. Defaults to 6.0.
+    sweep_jitter_deg : float
+        Standard deviation of in-plane sweep jitter in degrees. Defaults to 2.5.
+    probe_pos_sigma_vox : float
+        Standard deviation of probe-position jitter in voxels. Defaults to 1.0.
+    probe_depth_sigma_vox : float
+        Standard deviation of depth jitter in voxels. Defaults to 6.0.
+    probe_tilt_sigma : float
+        Standard deviation of probe tilt perturbations. Defaults to 0.08.
+    
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        Sampled values in the requested representation.
+    """
     strategy = str(strategy).strip().lower()
     center = np.asarray(center, dtype=np.float32).reshape(3)
     if strategy == "ultrasound_probe":
@@ -406,9 +680,27 @@ def simulate_sparse_acquisition(
     chunk: int = 64,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
-    Unified sparse acquisition for centered or translated slice planes.
-
-    plane: |(x - p_i) dot n_i| <= thickness_vox
+    Project a dense volume onto sparse slice planes.
+    
+    Parameters
+    ----------
+    vol : np.ndarray
+        Input volume array.
+    normals : np.ndarray
+        Plane normal vectors that define sampled slices.
+    center : np.ndarray | None
+        Foreground center expressed in voxel coordinates. Defaults to None.
+    points : np.ndarray | None
+        Points through which the sampled slice planes pass. Defaults to None.
+    thickness_vox : float
+        Half thickness of each sampled slice plane in voxels. Defaults to 1.0.
+    chunk : int
+        Number of slice planes processed together per loop iteration. Defaults to 64.
+    
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray, np.ndarray]
+        Simulated sparse acquisition.
     """
     vol = vol.astype(np.float32)
     D, H, W = vol.shape
@@ -446,6 +738,18 @@ def simulate_sparse_acquisition(
 
 @dataclass
 class InpaintingSample:
+    """
+    Store a prepared sparse-to-dense training sample.
+    
+    Attributes
+    ----------
+    x : np.ndarray
+        Input tensor with sparse intensities and known-voxel mask.
+    y : np.ndarray
+        Ground-truth dense target volume.
+    meta : dict
+        Additional metadata describing the sampled case.
+    """
     x: np.ndarray  # [2,D,H,W] (sparse + mask)
     y: np.ndarray  # [1,D,H,W] (gt)
     meta: dict

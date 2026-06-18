@@ -1,0 +1,160 @@
+﻿{
+    "selector":  "mean",
+    "metric":  "rmse_missing",
+    "focus_label":  "thesis_ablation_best_unet_usprobe_finetuned",
+    "compare_label":  "thesis_ablation_best_unet",
+    "selected_cases":  [
+                           {
+                               "archetype":  "best",
+                               "case_id":  "liver_75",
+                               "eval_seed":  1337
+                           },
+                           {
+                               "archetype":  "average",
+                               "case_id":  "liver_18",
+                               "eval_seed":  1338
+                           },
+                           {
+                               "archetype":  "worst",
+                               "case_id":  "liver_39",
+                               "eval_seed":  1338
+                           }
+                       ],
+    "outputs":  [
+                    {
+                        "slice_count":  32,
+                        "archetype":  "best",
+                        "case_id":  "liver_75",
+                        "eval_seed":  1337,
+                        "files":  {
+                                      "matrix_pdf":  "qualitative/slices_32/best_matrix.pdf",
+                                      "comparison_pdf":  "qualitative/slices_32/best_comparison.pdf",
+                                      "volume_pdf":  "qualitative/slices_32/best_volume.pdf"
+                                  },
+                        "baseline_rmse_missing":  0.018351571634411812,
+                        "finetuned_rmse_missing":  0.01308317482471466,
+                        "baseline_ssim_all":  0.8924192190170288,
+                        "finetuned_ssim_all":  0.8971243500709534
+                    },
+                    {
+                        "slice_count":  32,
+                        "archetype":  "average",
+                        "case_id":  "liver_18",
+                        "eval_seed":  1338,
+                        "files":  {
+                                      "matrix_pdf":  "qualitative/slices_32/average_matrix.pdf",
+                                      "comparison_pdf":  "qualitative/slices_32/average_comparison.pdf",
+                                      "volume_pdf":  "qualitative/slices_32/average_volume.pdf"
+                                  },
+                        "baseline_rmse_missing":  0.0621631033718586,
+                        "finetuned_rmse_missing":  0.03284420818090439,
+                        "baseline_ssim_all":  0.8503285646438599,
+                        "finetuned_ssim_all":  0.8723247051239014
+                    },
+                    {
+                        "slice_count":  32,
+                        "archetype":  "worst",
+                        "case_id":  "liver_39",
+                        "eval_seed":  1338,
+                        "files":  {
+                                      "matrix_pdf":  "qualitative/slices_32/worst_matrix.pdf",
+                                      "comparison_pdf":  "qualitative/slices_32/worst_comparison.pdf",
+                                      "volume_pdf":  "qualitative/slices_32/worst_volume.pdf"
+                                  },
+                        "baseline_rmse_missing":  0.07074384391307831,
+                        "finetuned_rmse_missing":  0.0584205687046051,
+                        "baseline_ssim_all":  0.8478294610977173,
+                        "finetuned_ssim_all":  0.8575679063796997
+                    },
+                    {
+                        "slice_count":  64,
+                        "archetype":  "best",
+                        "case_id":  "liver_75",
+                        "eval_seed":  1337,
+                        "files":  {
+                                      "matrix_pdf":  "qualitative/slices_64/best_matrix.pdf",
+                                      "comparison_pdf":  "qualitative/slices_64/best_comparison.pdf",
+                                      "volume_pdf":  "qualitative/slices_64/best_volume.pdf"
+                                  },
+                        "baseline_rmse_missing":  0.019290873780846596,
+                        "finetuned_rmse_missing":  0.012630605138838291,
+                        "baseline_ssim_all":  0.8926889896392822,
+                        "finetuned_ssim_all":  0.8978356122970581
+                    },
+                    {
+                        "slice_count":  64,
+                        "archetype":  "average",
+                        "case_id":  "liver_18",
+                        "eval_seed":  1338,
+                        "files":  {
+                                      "matrix_pdf":  "qualitative/slices_64/average_matrix.pdf",
+                                      "comparison_pdf":  "qualitative/slices_64/average_comparison.pdf",
+                                      "volume_pdf":  "qualitative/slices_64/average_volume.pdf"
+                                  },
+                        "baseline_rmse_missing":  0.06416751444339752,
+                        "finetuned_rmse_missing":  0.030728869140148163,
+                        "baseline_ssim_all":  0.855359673500061,
+                        "finetuned_ssim_all":  0.8796217441558838
+                    },
+                    {
+                        "slice_count":  64,
+                        "archetype":  "worst",
+                        "case_id":  "liver_39",
+                        "eval_seed":  1338,
+                        "files":  {
+                                      "matrix_pdf":  "qualitative/slices_64/worst_matrix.pdf",
+                                      "comparison_pdf":  "qualitative/slices_64/worst_comparison.pdf",
+                                      "volume_pdf":  "qualitative/slices_64/worst_volume.pdf"
+                                  },
+                        "baseline_rmse_missing":  0.06251799315214157,
+                        "finetuned_rmse_missing":  0.05249837785959244,
+                        "baseline_ssim_all":  0.8651014566421509,
+                        "finetuned_ssim_all":  0.8726025223731995
+                    },
+                    {
+                        "slice_count":  128,
+                        "archetype":  "best",
+                        "case_id":  "liver_75",
+                        "eval_seed":  1337,
+                        "files":  {
+                                      "matrix_pdf":  "qualitative/slices_128/best_matrix.pdf",
+                                      "comparison_pdf":  "qualitative/slices_128/best_comparison.pdf",
+                                      "volume_pdf":  "qualitative/slices_128/best_volume.pdf"
+                                  },
+                        "baseline_rmse_missing":  0.01600232906639576,
+                        "finetuned_rmse_missing":  0.009439517743885517,
+                        "baseline_ssim_all":  0.8973977565765381,
+                        "finetuned_ssim_all":  0.9006432294845581
+                    },
+                    {
+                        "slice_count":  128,
+                        "archetype":  "average",
+                        "case_id":  "liver_18",
+                        "eval_seed":  1338,
+                        "files":  {
+                                      "matrix_pdf":  "qualitative/slices_128/average_matrix.pdf",
+                                      "comparison_pdf":  "qualitative/slices_128/average_comparison.pdf",
+                                      "volume_pdf":  "qualitative/slices_128/average_volume.pdf"
+                                  },
+                        "baseline_rmse_missing":  0.058416690677404404,
+                        "finetuned_rmse_missing":  0.030162271112203598,
+                        "baseline_ssim_all":  0.8662177324295044,
+                        "finetuned_ssim_all":  0.8850905895233154
+                    },
+                    {
+                        "slice_count":  128,
+                        "archetype":  "worst",
+                        "case_id":  "liver_39",
+                        "eval_seed":  1338,
+                        "files":  {
+                                      "matrix_pdf":  "qualitative/slices_128/worst_matrix.pdf",
+                                      "comparison_pdf":  "qualitative/slices_128/worst_comparison.pdf",
+                                      "volume_pdf":  "qualitative/slices_128/worst_volume.pdf"
+                                  },
+                        "baseline_rmse_missing":  0.06969299912452698,
+                        "finetuned_rmse_missing":  0.055498670786619186,
+                        "baseline_ssim_all":  0.8654662370681763,
+                        "finetuned_ssim_all":  0.8747678995132446
+                    }
+                ]
+}

@@ -21,6 +21,19 @@ RESERVED_COLUMNS = {
 
 
 def metric_columns_from_rows(rows: Sequence[Mapping[str, object]]) -> List[str]:
+    """
+    Extract metric column names from case-level metric rows.
+    
+    Parameters
+    ----------
+    rows : Sequence[Mapping[str, object]]
+        Row dictionaries that should be written or summarized.
+    
+    Returns
+    -------
+    List[str]
+        Metric column names extracted from the provided rows.
+    """
     columns: set[str] = set()
     for row in rows:
         columns.update(str(key) for key in row.keys())
@@ -29,6 +42,21 @@ def metric_columns_from_rows(rows: Sequence[Mapping[str, object]]) -> List[str]:
 
 
 def summarize_metric_values(values: Iterable[float], confidence: float = 0.95) -> Dict[str, float | int]:
+    """
+    Summarize a metric sequence with descriptive statistics and confidence intervals.
+    
+    Parameters
+    ----------
+    values : Iterable[float]
+        Numeric values that should be summarized.
+    confidence : float
+        Confidence level used for interval estimation. Defaults to 0.95.
+    
+    Returns
+    -------
+    Dict[str, float | int]
+        Computed summary values.
+    """
     arr = np.asarray(list(values), dtype=np.float64)
     if arr.size == 0:
         raise ValueError("Cannot summarize an empty metric sequence.")
@@ -68,6 +96,23 @@ def summarize_case_metrics(
     metric_columns: Sequence[str] | None = None,
     confidence: float = 0.95,
 ) -> Dict[str, Dict[str, float | int]]:
+    """
+    Summarize case-level metrics across all selected metric columns.
+    
+    Parameters
+    ----------
+    rows : Sequence[Mapping[str, object]]
+        Row dictionaries that should be written or summarized.
+    metric_columns : Sequence[str] | None
+        Metric names that should be summarized. Defaults to None.
+    confidence : float
+        Confidence level used for interval estimation. Defaults to 0.95.
+    
+    Returns
+    -------
+    Dict[str, Dict[str, float | int]]
+        Computed summary values.
+    """
     if not rows:
         raise ValueError("Cannot summarize metrics without case-level rows.")
 
@@ -82,6 +127,19 @@ def summarize_case_metrics(
 
 
 def summary_rows_from_nested(summary: Mapping[str, Mapping[str, float | int]]) -> List[Dict[str, float | int | str]]:
+    """
+    Flatten nested summary statistics into row dictionaries.
+    
+    Parameters
+    ----------
+    summary : Mapping[str, Mapping[str, float | int]]
+        Nested summary dictionary to flatten.
+    
+    Returns
+    -------
+    List[Dict[str, float | int | str]]
+        Flattened summary rows ready for serialization.
+    """
     rows: List[Dict[str, float | int | str]] = []
     for metric_name, stats_map in summary.items():
         row: Dict[str, float | int | str] = {"metric": metric_name}

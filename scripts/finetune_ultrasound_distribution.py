@@ -15,6 +15,19 @@ if ROOT not in sys.path:
 
 
 def load_json(path: str) -> Dict[str, Any]:
+    """
+    Load a JSON document from disk.
+    
+    Parameters
+    ----------
+    path : str
+        Filesystem path to the input artifact.
+    
+    Returns
+    -------
+    Dict[str, Any]
+        Loaded data structure.
+    """
     with open(path, "r", encoding="utf-8") as handle:
         payload = json.load(handle)
     if not isinstance(payload, dict):
@@ -23,6 +36,25 @@ def load_json(path: str) -> Dict[str, Any]:
 
 
 def choose_value(cli_value: Any, config: Dict[str, Any], key: str, default: Any) -> Any:
+    """
+    Choose the first non-null value from preferred sources.
+    
+    Parameters
+    ----------
+    cli_value : Any
+        Command-line value that may be forwarded to a subprocess.
+    config : Dict[str, Any]
+        Configuration object that controls the combined loss.
+    key : str
+        Lookup key for a localized string or dictionary value.
+    default : Any
+        Fallback value used when a key is missing.
+    
+    Returns
+    -------
+    Any
+        Resolved value or selection.
+    """
     if cli_value is not None:
         return cli_value
     if key in config:
@@ -31,12 +63,46 @@ def choose_value(cli_value: Any, config: Dict[str, Any], key: str, default: Any)
 
 
 def append_scalar_arg(command: list[str], name: str, value: Any) -> None:
+    """
+    Append a scalar command-line argument when a value is available.
+    
+    Parameters
+    ----------
+    command : list[str]
+        Command sequence that should be executed or recorded.
+    name : str
+        Human-readable name or identifier.
+    value : Any
+        Scalar value processed by the helper.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     if value is None:
         return
     command.extend([name, str(value)])
 
 
 def append_vector_arg(command: list[str], name: str, values: Iterable[Any] | None) -> None:
+    """
+    Append a vector command-line argument when values are available.
+    
+    Parameters
+    ----------
+    command : list[str]
+        Command sequence that should be executed or recorded.
+    name : str
+        Human-readable name or identifier.
+    values : Iterable[Any] | None
+        Numeric values that should be summarized.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     if values is None:
         return
     command.append(name)
@@ -44,6 +110,19 @@ def append_vector_arg(command: list[str], name: str, values: Iterable[Any] | Non
 
 
 def resolve_project_output_path(path: str) -> str:
+    """
+    Resolve an output path relative to the project workspace.
+    
+    Parameters
+    ----------
+    path : str
+        Filesystem path to the input artifact.
+    
+    Returns
+    -------
+    str
+        Resolved value or selection.
+    """
     if os.path.isabs(path):
         return os.path.normpath(path)
     normalized = os.path.normpath(path)
@@ -56,6 +135,14 @@ def resolve_project_output_path(path: str) -> str:
 
 
 def main() -> None:
+    """
+    Execute the command-line entry point for this script.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--data", type=str, required=True)
     ap.add_argument("--weights", type=str, required=True, help="Pretrained state_dict or checkpoint used for initialization.")
@@ -68,7 +155,7 @@ def main() -> None:
     ap.add_argument("--lr", type=float, default=5e-5)
     ap.add_argument("--wd", type=float, default=None)
     ap.add_argument("--batch", type=int, default=None)
-    ap.add_argument("--model", type=str, default=None, choices=["baseline", "gated", "partial"])
+    ap.add_argument("--model", type=str, default=None, choices=["baseline", "partial"])
     ap.add_argument("--dim", type=int, default=None)
     ap.add_argument("--init_feat", type=int, default=None)
     ap.add_argument("--slices_min", type=int, default=None)

@@ -1,39 +1,69 @@
-# Liver Sparse Reconstruction Core
+# 3D Liver Reconstruction
 
-Companion repository for the bachelor thesis on sparse-to-dense 3D liver reconstruction from CT data.
+Companion repository for a bachelor thesis on sparse-to-dense 3D liver
+reconstruction from CT volumes with synthetically generated sparse
+observations.
 
-The repository contains the code that was used for preprocessing, split generation, model training, evaluation, regularization analysis, qualitative figure export, and the controlled `ultrasound_probe` finetuning study. In addition, it includes a curated `results/` directory with the thesis-relevant artifacts that are cited or discussed in the written work.
+This snapshot is meant to be publishable and readable: it contains the
+reconstruction code, portable example configurations, and a curated
+[`results/`](results/README.md) folder with the thesis-relevant artifacts that
+are worth inspecting without shipping the entire private working tree.
 
-## Scope
+## Included
 
-Included:
+- `inpainting3d/`: core package for data handling, sparse acquisition,
+  reconstruction models, losses, metrics, and reproducibility helpers
+- `scripts/`: training, evaluation, benchmarking, robustness, and qualitative
+  comparison entry points
+- `configs/`: portable example configurations for smoke, short, and final
+  experiment suites
+- [`results/`](results/README.md): curated thesis artifacts for
+  regularization analysis, slice-count evaluation, and ultrasound-probe
+  finetuning
 
-- the core Python package for data handling, models, losses, metrics, and reproducibility helpers,
-- the scripts required for the experimental workflow described in the thesis,
-- public example configurations for the final `128^3` reference regime,
-- curated evaluation artifacts for ablation, regularization, ultrasound-probe finetuning, and appendix figures.
+## Intentionally Excluded
 
-Not included:
-
-- raw medical image data,
-- large training checkpoints,
-- machine-local configuration files,
-- exploratory runs that were not part of the documented thesis workflow.
+- raw medical data
+- preprocessed `.nii.gz` archives
+- trained weights and checkpoints
+- full `runs/` directories
+- machine-local `*.local*.json` files
 
 ## Repository Layout
 
-- `inpainting3d/`  
-  Core package with data loading, sparse acquisition, model definitions, losses, metrics, statistics, split helpers, and utilities.
-- `scripts/`  
-  Entry points for preprocessing, split creation, training, evaluation, regularization analysis, qualitative exports, and ultrasound-probe experiments.
-- `configs/`  
-  Public reference configurations for the final thesis setup.
-- `results/`  
-  Curated thesis artifacts with human-readable summaries and sanitized metadata.
+- `inpainting3d/`
+  Python package with acquisition simulation, models, losses, metrics, split
+  handling, preprocessing helpers, and utilities.
+- `scripts/`
+  CLI entry points for preprocessing, split creation, training, evaluation,
+  regularization studies, ultrasound-style comparison, and qualitative export.
+- `configs/`
+  Example configurations for reproducible suite runs. See
+  [`configs/README.md`](configs/README.md).
+- `results/`
+  Cleaned thesis artifact snapshot with README files and summary JSONs. See
+  [`results/README.md`](results/README.md).
+
+## Data Assumptions
+
+The code expects liver-focused dense CT volumes stored as `.nii.gz` files.
+Within the thesis workflow these volumes were normalized, spatially aligned,
+cropped around the organ of interest, and resampled to fixed cubic grids such
+as `64^3` or `128^3`.
+
+Sparse observations are not stored as separate datasets. They are generated at
+runtime from dense targets by the acquisition simulation code, which keeps the
+problem setup explicit and easy to vary.
 
 ## Installation
 
-Python `>= 3.10` is required.
+The public repository snapshot requires Python `>= 3.10`.
+The archived thesis run environment used Python `3.9.0` together with
+PyTorch `2.5.1+cu121`, while the cleaned publication snapshot now contains
+modern PEP 604 type hints and therefore declares the stricter interpreter
+requirement. The pinned dependency set below reflects the documented thesis
+package versions; on GPU systems, install the matching PyTorch wheel variant
+for your CUDA setup if needed.
 
 ```powershell
 python -m venv .venv
@@ -48,30 +78,18 @@ Alternatively:
 python -m pip install -r requirements.txt
 ```
 
-## Data Requirements
+## Quick Start
 
-The workflow expects dense liver CT volumes as `.nii.gz` files. The repository does not ship any patient data.
-
-The thesis experiments were run on a preprocessed `128^3` dataset derived from official liver CT data sources. For a fresh setup, prepare a local directory such as:
-
-```text
-./data/pipeline_preprocessed_data_128/
-```
-
-Sparse observations are generated online from the dense target volumes during training and evaluation.
-
-## Thesis Workflow
-
-### 1. Preprocess dense liver CT volumes
+### 1. Preprocess dense CT volumes
 
 ```powershell
 python scripts/preprocessing_data_pipeline.py `
-  --source ".\data\raw_liver_ct" `
-  --target_dim 128 `
-  --output_dir ".\data\pipeline_preprocessed_data_128"
+  --source ".\raw_liver_ct" `
+  --output_root ".\data" `
+  --target_dim 128
 ```
 
-### 2. Create the persisted train/val/test split
+### 2. Create a persistent train/val/test split
 
 ```powershell
 python scripts/create_data_split.py `
@@ -83,65 +101,76 @@ python scripts/create_data_split.py `
   --test_ratio 0.15
 ```
 
-### 3. Run the final ablation suite
+### 3. Train a baseline reconstruction model
 
 ```powershell
-python scripts/run_experiment_suite.py `
-  --config ".\configs\ablation_final.example.json"
+python scripts/train_inpainting.py `
+  --data ".\data\pipeline_preprocessed_data_128\*.nii.gz" `
+  --split_file ".\runs\splits\liver_seed1337_split_128.json" `
+  --out ".\runs\standard_unet3d\train" `
+  --model baseline `
+  --dim 128 `
+  --epochs 150 `
+  --batch 2 `
+  --slices_min 8 `
+  --slices_max 128 `
+  --w_grad 0.05 `
+  --w_ms_ssim 0.2 `
+  --amp `
+  --deterministic
 ```
 
-This reproduces the five final ablation variants used in the thesis:
-
-- `standard_unet3d_no_partialconv`
-- `partialresunet3d_full`
-- `partialresunet3d_no_hard_constraint`
-- `partialresunet3d_no_gradient_loss`
-- `partialresunet3d_no_ms_ssim`
-
-### 4. Run the regularization analysis of the selected reference model
+### 4. Evaluate on the test split
 
 ```powershell
-python scripts/evaluate_regularization_behavior.py `
+python scripts/evaluate_inpainting.py `
   --data ".\data\pipeline_preprocessed_data_128\*.nii.gz" `
-  --weights ".\runs\ablation_final_128\standard_unet3d_no_partialconv\train\best_model.pt" `
   --split_file ".\runs\splits\liver_seed1337_split_128.json" `
   --split test `
+  --weights ".\runs\standard_unet3d\train\best_model.pt" `
+  --out ".\runs\standard_unet3d\eval" `
   --model baseline `
   --dim 128 `
   --init_feat 32 `
-  --out ".\runs\ablation_final_128\standard_unet3d_no_partialconv\thesis_regularization_full"
+  --batch 1 `
+  --slices 64
 ```
 
-### 5. Run the controlled `ultrasound_probe` finetuning study
+## Thesis-Relevant Workflows
 
-```powershell
-python scripts/compare_best_run_ultrasound.py `
-  --data ".\data\pipeline_preprocessed_data_128\*.nii.gz"
-```
+The most thesis-specific scripts are:
 
-The helper script launches the finetuning and evaluation steps for the documented ultrasound-like observation geometry.
+- `scripts/run_experiment_suite.py` for structured ablation runs
+- `scripts/evaluate_regularization_behavior.py` for the regularization study
+- `scripts/generate_ct_method_figures.py` for CT-based method figures used to
+  illustrate oriented slice geometry, Sparse Volume / Known Mask, and the
+  Hard-Constraint in thesis Chapter 5
+- `scripts/prepare_thesis_real_figures.py` for thesis figures based on real CT
+  examples, curated reconstruction outputs, and patient US/CT verification
+  plots
+- `scripts/generate_thesis_concept_figures.py` for schematic figures such as
+  CT-vs-ultrasound motivation, oriented slice geometry, Sparse Volume /
+  Known Mask, Hard-Constraint, and pipeline overviews
+- `scripts/compare_best_run_ultrasound.py` for finetuning under
+  `ultrasound_probe` geometry
+- `scripts/run_multislice_ultrasound_eval_and_export.py` and
+  `scripts/export_thesis_multislice_qualitative_figures.py` for qualitative
+  exports across multiple slice counts
 
-## Curated Results
+The curated outputs already shipped in [`results/`](results/README.md) are the
+small, human-readable subset of those experiments that directly support the
+written thesis.
 
-The `results/` directory is the public-facing artifact layer of the repository.
+## Notes on Reproducibility
 
-- `results/ablation/`  
-  Final ablation summary table and suite-level metrics.
-- `results/splits/`  
-  Sanitized documentation of the exact case split used in the thesis.
-- `results/regularization/`  
-  Plots, summary tables, raw CSV exports, and LaTeX tables for the empirical regularization analysis.
-- `results/ultrasound_probe/`  
-  Finetuning history, evaluation summaries, and qualitative comparison figures for the `ultrasound_probe` study.
-- `results/slice_distribution/`  
-  Appendix figures and summary files for the classical comparison against the regression baseline.
+- Example configs are tracked, machine-local configs are not.
+- The public artifact snapshot uses cleaned summary JSONs and selected CSV/PDF
+  outputs instead of entire private `runs/` trees.
+- Model weights are intentionally excluded, so a full rerun still requires
+  access to compatible data and local training.
 
-## Reproducibility Notes
+## Status
 
-The thesis uses one persisted split, fixed seeds, and a single documented `128^3` reference regime. Public example configurations are sanitized to remove machine-local paths, while `results/` preserves the experiment structure and the reported outputs in a portable form.
-
-For a compact overview of the final setup, start with:
-
-- `configs/ablation_final.example.json`
-- `configs/liver_example.yaml`
-- `results/manifest.json`
+This is research code for controlled reconstruction experiments. It is suitable
+for thesis documentation, method comparison, and follow-up experiments. It is
+not a clinical product and not packaged as a production inference system.

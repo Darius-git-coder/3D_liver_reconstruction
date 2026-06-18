@@ -1,10 +1,20 @@
 # Configurations
 
-This directory contains the public reference configurations for the documented thesis workflow.
+This directory contains portable example configurations for the public
+repository snapshot.
 
-- `ablation_final.example.json`  
-  Final `128^3` ablation suite used for the thesis comparison of the five reported model variants.
-- `liver_example.yaml`  
-  Compact workflow overview for preprocessing, split creation, training, evaluation, regularization analysis, and the controlled `ultrasound_probe` finetuning study.
+Included examples:
 
-Machine-local overrides are intentionally not versioned. Adapt the data paths and output directories to your local environment before running the pipeline.
+- `ablation_smoke.example.json`
+- `ablation_short.example.json`
+- `ablation_final.example.json`
+- `ablation_suite.example.json`
+- `liver_example.yaml`
+
+These files are meant to document the structure of the experiment setup and to
+serve as starting points for local runs.
+
+Machine-specific files such as `*.local*.json` are intentionally not part of
+the publishable snapshot. When you need absolute paths, a specific Python
+interpreter, or workstation-local output locations, copy an example file and
+adapt it locally.

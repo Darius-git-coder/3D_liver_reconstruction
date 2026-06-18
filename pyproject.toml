@@ -3,19 +3,19 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "liver-sparse-reconstruction-core"
+name = "liver-sparse-reconstruction"
 version = "0.1.0"
-description = "Companion code and curated artifacts for a bachelor thesis on sparse 3D liver reconstruction from CT"
+description = "Research code for sparse-to-dense 3D liver reconstruction from CT slice observations"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-  "matplotlib",
-  "nibabel",
-  "numpy",
-  "pandas",
-  "scipy",
-  "torch",
-  "tqdm",
+  "matplotlib==3.9.4",
+  "nibabel==5.3.3",
+  "numpy==2.0.2",
+  "pandas==2.3.3",
+  "scipy==1.13.1",
+  "torch==2.5.1",
+  "tqdm==4.67.3",
 ]
 
 [tool.setuptools]

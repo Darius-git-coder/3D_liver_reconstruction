@@ -1,7 +1,7 @@
-matplotlib
-nibabel
-numpy
-pandas
-scipy
-torch
-tqdm
+matplotlib==3.9.4
+nibabel==5.3.3
+numpy==2.0.2
+pandas==2.3.3
+scipy==1.13.1
+torch==2.5.1
+tqdm==4.67.3

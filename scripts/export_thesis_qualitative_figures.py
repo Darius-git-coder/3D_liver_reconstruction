@@ -40,6 +40,14 @@ from scripts.visualize_model_comparison import resolve_eval_files, run_predictio
 
 
 def configure_matplotlib() -> None:
+    """
+    Configure matplotlib defaults for figure generation.
+    
+    Returns
+    -------
+    None
+        Matplotlib global state is updated in place.
+    """
     mpl.rcParams.update(
         {
             "font.family": "DejaVu Serif",
@@ -56,6 +64,19 @@ def configure_matplotlib() -> None:
 
 
 def slugify(text: str) -> str:
+    """
+    Convert a label into a filesystem-friendly slug.
+    
+    Parameters
+    ----------
+    text : str
+        Text content to render or transform.
+    
+    Returns
+    -------
+    str
+        Filesystem-friendly slug.
+    """
     text = text.strip().replace(" ", "_")
     text = re.sub(r"[^A-Za-z0-9_.-]+", "_", text)
     text = re.sub(r"_+", "_", text)
@@ -63,6 +84,19 @@ def slugify(text: str) -> str:
 
 
 def extract_run_name(eval_dir: str) -> str:
+    """
+    Extract the run name from an artifact path.
+    
+    Parameters
+    ----------
+    eval_dir : str
+        Requested evaluation dir.
+    
+    Returns
+    -------
+    str
+        Resolved name or identifier.
+    """
     eval_dir = os.path.normpath(eval_dir)
     base = os.path.basename(eval_dir)
     if base.lower() == "eval":
@@ -71,6 +105,19 @@ def extract_run_name(eval_dir: str) -> str:
 
 
 def human_archetype(name: str) -> str:
+    """
+    Map an internal archetype identifier to a readable label.
+    
+    Parameters
+    ----------
+    name : str
+        Human-readable name or identifier.
+    
+    Returns
+    -------
+    str
+        Human-readable archetype label.
+    """
     mapping = {
         "best": "Best Case",
         "average": "Durchschnittsfall",
@@ -80,6 +127,19 @@ def human_archetype(name: str) -> str:
 
 
 def compute_gray_limit(*volumes: np.ndarray) -> float:
+    """
+    Compute grayscale display limits for a volume slice.
+    
+    Parameters
+    ----------
+    *volumes : np.ndarray
+        Collection of input volumes.
+    
+    Returns
+    -------
+    float
+        Computed summary values.
+    """
     hi = max(float(np.quantile(vol, 0.995)) for vol in volumes)
     return max(hi, 1e-3)
 
@@ -94,6 +154,31 @@ def add_overlay(
     cmap: str,
     symmetric: bool,
 ) -> Any:
+    """
+    Overlay a mask or highlight layer onto an axis.
+    
+    Parameters
+    ----------
+    ax : plt.Axes
+        Matplotlib axis used for plotting.
+    background : np.ndarray
+        Background image used for an overlay.
+    overlay : np.ndarray
+        Overlay image or mask drawn on top of a background.
+    gray_vmax : float
+        Upper grayscale display limit.
+    overlay_vmax : float
+        Upper display limit used for the overlay.
+    cmap : str
+        Matplotlib colormap name used for rendering.
+    symmetric : bool
+        Whether overlay limits should be symmetric around zero.
+    
+    Returns
+    -------
+    None
+        The overlay is drawn onto the provided axis.
+    """
     ax.imshow(background.T, cmap="gray", origin="lower", vmin=0.0, vmax=gray_vmax)
     if symmetric:
         im = ax.imshow(
@@ -118,6 +203,23 @@ def add_overlay(
 
 
 def annotate_header(fig: plt.Figure, title: str, subtitle: str) -> None:
+    """
+    Annotate a figure column header.
+    
+    Parameters
+    ----------
+    fig : plt.Figure
+        Matplotlib figure to save or annotate.
+    title : str
+        Plot or figure title.
+    subtitle : str
+        Supporting subtitle shown below a title.
+    
+    Returns
+    -------
+    None
+        The annotation is drawn onto the provided axis.
+    """
     wrapped_title = "\n".join(textwrap.wrap(title, width=76, break_long_words=False, break_on_hyphens=False))
     wrapped_subtitle = "\n".join(textwrap.wrap(subtitle, width=120, break_long_words=False, break_on_hyphens=False))
     title_lines = max(1, wrapped_title.count("\n") + 1)
@@ -132,6 +234,23 @@ def build_metrics_subtitle(
     focus_mean: Dict[str, float],
     metric: str,
 ) -> str:
+    """
+    Build a compact metric subtitle for a figure panel.
+    
+    Parameters
+    ----------
+    base_mean : Dict[str, float]
+        Mean metric value of the baseline or reference model.
+    focus_mean : Dict[str, float]
+        Mean metric value of the focus model.
+    metric : str
+        Metric name used for lookup or reporting.
+    
+    Returns
+    -------
+    str
+        Constructed object ready for downstream use.
+    """
     base_value = float(base_mean.get(metric, np.nan))
     focus_value = float(focus_mean.get(metric, np.nan))
     rel = 100.0 * (base_value - focus_value) / max(base_value, 1e-12)
@@ -143,6 +262,19 @@ def build_metrics_subtitle(
 
 
 def resolve_slice_descriptor(args_payload: Dict[str, Any]) -> tuple[int | None, str, str]:
+    """
+    Describe a slice index relative to the shown orientation.
+    
+    Parameters
+    ----------
+    args_payload : Dict[str, Any]
+        Serialized command-line or configuration payload stored with the artifact.
+    
+    Returns
+    -------
+    tuple[int | None, str, str]
+        Resolved value or selection.
+    """
     raw_slices = args_payload.get("slices")
     if raw_slices is not None:
         slice_count = int(raw_slices)
@@ -175,6 +307,41 @@ def create_large_matrix_figure(
     base_mean: Dict[str, float],
     focus_mean: Dict[str, float],
 ) -> None:
+    """
+    Create the large matrix figure for qualitative comparisons.
+    
+    Parameters
+    ----------
+    out_path : str
+        Destination path for the written artifact.
+    case_id : str
+        Case identifier.
+    archetype : str
+        Qualitative archetype label used in the figure.
+    slice_label : str
+        Human-readable description of the shown slice.
+    eval_seed : int
+        Seed used for one evaluation repetition.
+    gt : np.ndarray
+        Ground-truth tensor or array.
+    sparse : np.ndarray
+        Sparse observation tensor or array.
+    mask : np.ndarray
+        Binary mask that marks valid or selected voxels.
+    pred_base : np.ndarray
+        Prediction generated by the baseline or reference model.
+    pred_focus : np.ndarray
+        Prediction generated by the focus model.
+    base_mean : Dict[str, float]
+        Mean metric value of the baseline or reference model.
+    focus_mean : Dict[str, float]
+        Mean metric value of the focus model.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     indices = choose_focus_indices(gt, mask)
     gray_vmax = compute_gray_limit(gt, sparse, pred_base, pred_focus)
     base_err = np.abs(pred_base - gt).astype(np.float32)
@@ -247,6 +414,39 @@ def create_comparison_figure(
     base_mean: Dict[str, float],
     focus_mean: Dict[str, float],
 ) -> None:
+    """
+    Create the core qualitative comparison figure.
+    
+    Parameters
+    ----------
+    out_path : str
+        Destination path for the written artifact.
+    case_id : str
+        Case identifier.
+    archetype : str
+        Qualitative archetype label used in the figure.
+    slice_label : str
+        Human-readable description of the shown slice.
+    eval_seed : int
+        Seed used for one evaluation repetition.
+    gt : np.ndarray
+        Ground-truth tensor or array.
+    mask : np.ndarray
+        Binary mask that marks valid or selected voxels.
+    pred_base : np.ndarray
+        Prediction generated by the baseline or reference model.
+    pred_focus : np.ndarray
+        Prediction generated by the focus model.
+    base_mean : Dict[str, float]
+        Mean metric value of the baseline or reference model.
+    focus_mean : Dict[str, float]
+        Mean metric value of the focus model.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     indices = choose_focus_indices(gt, mask)
     improvement = np.abs(pred_base - gt) - np.abs(pred_focus - gt)
     gray_vmax = compute_gray_limit(gt, pred_base, pred_focus)
@@ -289,6 +489,21 @@ def create_comparison_figure(
 
 
 def _face_colors(face_vertices: np.ndarray, color: str) -> np.ndarray:
+    """
+    Generate face colors for volumetric surface rendering.
+    
+    Parameters
+    ----------
+    face_vertices : np.ndarray
+        Vertex coordinates of mesh faces.
+    color : str
+        Color used for plotting or annotation.
+    
+    Returns
+    -------
+    np.ndarray
+        Face colors prepared for surface rendering.
+    """
     base_color = np.asarray(to_rgb(color), dtype=np.float32)
     light_dir = np.asarray([0.30, -0.45, 0.84], dtype=np.float32)
     light_dir /= np.linalg.norm(light_dir) + 1e-8
@@ -302,6 +517,21 @@ def _face_colors(face_vertices: np.ndarray, color: str) -> np.ndarray:
 
 
 def extract_surface_mesh(volume: np.ndarray, threshold: float) -> Any:
+    """
+    Extract a surface mesh from a volumetric foreground mask.
+    
+    Parameters
+    ----------
+    volume : np.ndarray
+        Input volume array.
+    threshold : float
+        Threshold used to define the foreground region.
+    
+    Returns
+    -------
+    Any
+        Extracted surface mesh.
+    """
     smoothed = gaussian_filter(volume.astype(np.float32), sigma=0.8)
     vmin = float(smoothed.min())
     vmax = float(smoothed.max())
@@ -321,6 +551,19 @@ def extract_surface_mesh(volume: np.ndarray, threshold: float) -> Any:
 
 
 def compute_mesh_bounds(meshes: Sequence[Any]) -> np.ndarray:
+    """
+    Compute axis-aligned bounds for a mesh.
+    
+    Parameters
+    ----------
+    meshes : Sequence[Any]
+        Meshes that should be rendered into the figure.
+    
+    Returns
+    -------
+    np.ndarray
+        Computed summary values.
+    """
     available = [mesh[0] for mesh in meshes if mesh is not None]
     if not available:
         return np.asarray([[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]], dtype=np.float32)
@@ -340,6 +583,27 @@ def add_mesh_surface(
     title: str,
     bounds: np.ndarray,
 ) -> None:
+    """
+    Add a triangulated mesh surface to a 3D axis.
+    
+    Parameters
+    ----------
+    ax : Any
+        Matplotlib axis used for plotting.
+    mesh_data : Any
+        Mesh vertices and faces passed to the renderer.
+    color : str
+        Color used for plotting or annotation.
+    title : str
+        Plot or figure title.
+    bounds : np.ndarray
+        Spatial bounds used to frame a rendered scene.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     if mesh_data is None:
         ax.set_title(f"{title}\n(keine stabile Oberfläche)")
         ax.set_axis_off()
@@ -387,6 +651,41 @@ def create_volume_render_figure(
     focus_mean: Dict[str, float],
     threshold: float,
 ) -> None:
+    """
+    Create a qualitative 3D volume-rendering figure.
+    
+    Parameters
+    ----------
+    out_path : str
+        Destination path for the written artifact.
+    case_id : str
+        Case identifier.
+    archetype : str
+        Qualitative archetype label used in the figure.
+    slice_label : str
+        Human-readable description of the shown slice.
+    eval_seed : int
+        Seed used for one evaluation repetition.
+    sparse : np.ndarray
+        Sparse observation tensor or array.
+    gt : np.ndarray
+        Ground-truth tensor or array.
+    pred_base : np.ndarray
+        Prediction generated by the baseline or reference model.
+    pred_focus : np.ndarray
+        Prediction generated by the focus model.
+    base_mean : Dict[str, float]
+        Mean metric value of the baseline or reference model.
+    focus_mean : Dict[str, float]
+        Mean metric value of the focus model.
+    threshold : float
+        Threshold used to define the foreground region.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     positive = gt[gt > max(threshold, 1e-3)]
     if positive.size:
         threshold = max(float(threshold), float(np.quantile(positive, 0.35)))
@@ -424,11 +723,34 @@ def create_volume_render_figure(
 
 
 def save_json(path: str, payload: Dict[str, Any]) -> None:
+    """
+    Write a JSON document to disk.
+    
+    Parameters
+    ----------
+    path : str
+        Filesystem path to the input artifact.
+    payload : Dict[str, Any]
+        Structured data that will be serialized as JSON.
+    
+    Returns
+    -------
+    None
+        The JSON artifact is written to disk.
+    """
     with open(path, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2, ensure_ascii=False)
 
 
 def main() -> None:
+    """
+    Execute the command-line entry point for this script.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--eval_dir", type=str, required=True)
     ap.add_argument("--out", type=str, default="")

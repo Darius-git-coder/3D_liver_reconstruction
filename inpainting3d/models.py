@@ -6,12 +6,24 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .mask_layers import PartialResidualBlock3D, GatedResidualBlock3D
+from .mask_layers import PartialResidualBlock3D
 
 
 class ResidualBlock3D(nn.Module):
-    """vanilla conv mit Res-Connection """
+    """
+    Apply two 3D convolutions with a residual shortcut.
+    """
     def __init__(self, in_f: int, out_f: int):
+        """
+        Initialize the residual 3D block.
+        
+        Parameters
+        ----------
+        in_f : int
+            Number of input feature channels.
+        out_f : int
+            Number of output feature channels.
+        """
         super().__init__()
         self.conv = nn.Sequential(
             nn.Conv3d(in_f, out_f, kernel_size=3, padding=1),
@@ -24,12 +36,39 @@ class ResidualBlock3D(nn.Module):
         self.relu = nn.LeakyReLU(0.2, inplace=True)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Apply the residual 3D block to an input tensor.
+        
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor or array.
+        
+        Returns
+        -------
+        torch.Tensor
+            Output produced by the model or workflow.
+        """
         return self.relu(self.conv(x) + self.shortcut(x))
 
 
 class DeepResUNet3D(nn.Module):
-    """Baseline: Input [B,2,D,H,W] -> Output [B,1,D,H,W]."""
+    """
+    Baseline residual 3D U-Net for sparse-to-dense reconstruction.
+    """
     def __init__(self, in_channels: int = 2, out_channels: int = 1, init_feat: int = 32):
+        """
+        Initialize the baseline residual 3D U-Net.
+        
+        Parameters
+        ----------
+        in_channels : int
+            Number of input feature channels. Defaults to 2.
+        out_channels : int
+            Number of output feature channels. Defaults to 1.
+        init_feat : int
+            Base number of feature channels in the first stage. Defaults to 32.
+        """
         super().__init__()
         f = init_feat
         self.enc1 = ResidualBlock3D(in_channels, f)
@@ -52,43 +91,19 @@ class DeepResUNet3D(nn.Module):
         self.final = nn.Conv3d(f, out_channels, kernel_size=1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        e1 = self.enc1(x)
-        e2 = self.enc2(self.pool(e1))
-        e3 = self.enc3(self.pool(e2))
-        e4 = self.enc4(self.pool(e3))
-        b = self.bottleneck(self.pool(e4))
-        d4 = self.dec4(torch.cat([self.up4(b), e4], dim=1))
-        d3 = self.dec3(torch.cat([self.up3(d4), e3], dim=1))
-        d2 = self.dec2(torch.cat([self.up2(d3), e2], dim=1))
-        d1 = self.dec1(torch.cat([self.up1(d2), e1], dim=1))
-        return self.final(d1)
-
-
-class GatedResUNet3D(nn.Module):
-    """Drop-in Alternative: ersetzt Conv-Blöcke durch GatedResidualBlock3D (Maske bleibt als Input-Kanal erhalten)."""
-    def __init__(self, in_channels: int = 2, out_channels: int = 1, init_feat: int = 32):
-        super().__init__()
-        f = init_feat
-        self.enc1 = GatedResidualBlock3D(in_channels, f)
-        self.enc2 = GatedResidualBlock3D(f, f * 2)
-        self.enc3 = GatedResidualBlock3D(f * 2, f * 4)
-        self.enc4 = GatedResidualBlock3D(f * 4, f * 8)
-        self.pool = nn.MaxPool3d(2)
-
-        self.bottleneck = GatedResidualBlock3D(f * 8, f * 16)
-
-        self.up4 = nn.ConvTranspose3d(f * 16, f * 8, kernel_size=2, stride=2)
-        self.dec4 = GatedResidualBlock3D(f * 16, f * 8)
-        self.up3 = nn.ConvTranspose3d(f * 8, f * 4, kernel_size=2, stride=2)
-        self.dec3 = GatedResidualBlock3D(f * 8, f * 4)
-        self.up2 = nn.ConvTranspose3d(f * 4, f * 2, kernel_size=2, stride=2)
-        self.dec2 = GatedResidualBlock3D(f * 4, f * 2)
-        self.up1 = nn.ConvTranspose3d(f * 2, f, kernel_size=2, stride=2)
-        self.dec1 = GatedResidualBlock3D(f * 2, f)
-
-        self.final = nn.Conv3d(f, out_channels, kernel_size=1)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Run the baseline residual 3D U-Net.
+        
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor or array.
+        
+        Returns
+        -------
+        torch.Tensor
+            Output produced by the model or workflow.
+        """
         e1 = self.enc1(x)
         e2 = self.enc2(self.pool(e1))
         e3 = self.enc3(self.pool(e2))
@@ -103,84 +118,20 @@ class GatedResUNet3D(nn.Module):
 
 class PartialResUNet3D(nn.Module):
     """
-    3D U-Net with residual partial convolution blocks for sparse volumetric data.
-
-    This model extends the standard 3D U-Net architecture by incorporating
-    Partial Convolutions and residual connections in all encoder and decoder
-    blocks. It is specifically designed to handle inputs with missing or
-    invalid regions, which are explicitly indicated via a binary mask.
-
-    The network processes both the input volume and its corresponding mask
-    throughout the entire forward pass. The mask is updated at each layer and
-    ensures that convolutions only consider valid voxels.
-
-    Architecture Overview:
-        - Encoder: 4 levels of downsampling using PartialResidualBlock3D + max pooling
-        - Bottleneck: deepest feature representation
-        - Decoder: 4 levels of upsampling using transposed convolutions
-        - Skip connections: concatenate encoder features with decoder features
-        - Mask propagation: masks are pooled, upsampled, and merged at each stage
-
-    Input Format:
-        x2 (torch.Tensor):
-            Shape: [B, 2, D, H, W]
-            B = batch size 
-            Channel 0: input volume (e.g., sparse or corrupted data)
-            Channel 1: binary mask (1 = valid voxel, 0 = invalid/missing voxel)
-            D = depth of the 3D volume
-            H = height of the 3D volume
-            W = width of the 3D volume
-    Output:
-        torch.Tensor:
-            Shape: [B, out_channels, D, H, W]
-            The predicted dense volume based on the input and mask.
-
-    Mask Handling:
-        - Encoder: masks are downsampled using max pooling
-          (a voxel is valid if any voxel in the pooling region is valid)
-        - Decoder: masks are upsampled via nearest-neighbor interpolation
-        - Skip connections: masks are merged using logical OR
-          (implemented as clamp(m_up + m_skip, 0, 1))
-        - PartialResidualBlock3D uses the mask to ignore invalid inputs
-          during convolution
-
-    Args:
-        out_channels (int, optional):
-            Number of output channels. Default: 1.
-
-        init_feat (int, optional):
-            Number of feature channels in the first encoder layer.
-            This value is doubled at each downsampling step.
-            Default: 32.
-
-    Forward Args:
-        x2 (torch.Tensor):
-            Input tensor containing both image and mask.
-            Shape: [B, 2, D, H, W].
-
-    Returns:
-        torch.Tensor:
-            Output tensor with shape [B, out_channels, D, H, W].
-
-    Notes:
-        - Spatial dimensions (D, H, W) should ideally be divisible by 16
-          due to four downsampling operations.
-        - The final layer is a standard 3D convolution and does not use
-          partial convolution.
-        - This architecture is well-suited for:
-            * Sparse 3D reconstruction
-            * Medical imaging with missing data
-            * Volumetric inpainting tasks
-
-    Example:
-        >>> model = PartialResUNet3D(out_channels=1, init_feat=32)
-        >>> x = torch.randn(2, 2, 64, 64, 64)  # [B, image+mask, D, H, W]
-        >>> y = model(x)
-        >>> print(y.shape)
-        torch.Size([2, 1, 64, 64, 64])
+    Partial-convolution 3D U-Net that propagates observation masks.
     """
         
     def __init__(self, out_channels: int = 1, init_feat: int = 32):
+        """
+        Initialize the partial-convolution 3D U-Net.
+        
+        Parameters
+        ----------
+        out_channels : int
+            Number of output feature channels. Defaults to 1.
+        init_feat : int
+            Base number of feature channels in the first stage. Defaults to 32.
+        """
         super().__init__()
         f = init_feat
 
@@ -207,13 +158,54 @@ class PartialResUNet3D(nn.Module):
     @staticmethod
     def _pool_mask(mask: torch.Tensor) -> torch.Tensor:
         # Max-Pooling: wenn irgendein valid in 2x2x2 -> valid
+        """
+        Downsample a validity mask with max pooling.
+        
+        Parameters
+        ----------
+        mask : torch.Tensor
+            Binary mask that marks valid or selected voxels.
+        
+        Returns
+        -------
+        torch.Tensor
+            Downsampled validity mask.
+        """
         return F.max_pool3d(mask, kernel_size=2, stride=2)
 
     @staticmethod
     def _up_mask(mask: torch.Tensor, size: Tuple[int, int, int]) -> torch.Tensor:
+        """
+        Upsample a validity mask to the requested spatial size.
+        
+        Parameters
+        ----------
+        mask : torch.Tensor
+            Binary mask that marks valid or selected voxels.
+        size : Tuple[int, int, int]
+            Requested output spatial size.
+        
+        Returns
+        -------
+        torch.Tensor
+            Upsampled validity mask.
+        """
         return F.interpolate(mask, size=size, mode="nearest")
 
     def forward(self, x2: torch.Tensor) -> torch.Tensor:
+        """
+        Run the partial-convolution 3D U-Net.
+        
+        Parameters
+        ----------
+        x2 : torch.Tensor
+            Input tensor that contains both image intensities and the validity mask.
+        
+        Returns
+        -------
+        torch.Tensor
+            Output produced by the model or workflow.
+        """
         img = x2[:, 0:1, ...]
         mask = x2[:, 1:2, ...]
 

@@ -17,6 +17,25 @@ from inpainting3d.utils import ensure_dir, torch_load_weights_compat, strip_data
 
 
 def run_model(model: torch.nn.Module, sparse: np.ndarray, mask: np.ndarray, device: torch.device) -> np.ndarray:
+    """
+    Run a model on a prepared sparse input.
+    
+    Parameters
+    ----------
+    model : torch.nn.Module
+        Model instance used for training, inference, or visualization.
+    sparse : np.ndarray
+        Sparse observation tensor or array.
+    mask : np.ndarray
+        Binary mask that marks valid or selected voxels.
+    device : torch.device
+        Torch device on which tensors should be created or evaluated.
+    
+    Returns
+    -------
+    np.ndarray
+        Output produced by the model or workflow.
+    """
     x = np.stack([sparse, mask], axis=0)[None, ...].astype(np.float32)  # [1,2,D,H,W]
     xt = torch.from_numpy(x).to(device)
     with torch.no_grad():
@@ -25,6 +44,14 @@ def run_model(model: torch.nn.Module, sparse: np.ndarray, mask: np.ndarray, devi
 
 
 def main() -> None:
+    """
+    Execute the command-line entry point for this script.
+    
+    Returns
+    -------
+    None
+        This function is executed for its side effects.
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--volume", type=str, required=True)
     ap.add_argument("--weights", type=str, required=True)
