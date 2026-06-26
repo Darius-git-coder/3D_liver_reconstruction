@@ -158,7 +158,7 @@ The most thesis-specific scripts are:
   exports across multiple slice counts
 
 The curated outputs already shipped in [`results/`](results/README.md) are the
-small, human-readable subset of those experiments that directly support the
+small subset of those experiments that directly support the
 written thesis.
 
 ## Notes on Reproducibility
