@@ -14,6 +14,7 @@ RESERVED_COLUMNS = {
     "experiment",
     "label",
     "model",
+    "objective",
     "weight_path",
     "eval_seed",
     "slice_geometry",
