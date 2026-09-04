@@ -15,8 +15,11 @@ RESERVED_COLUMNS = {
     "label",
     "model",
     "objective",
-    "weight_path",
+    "method",
+    "train_seed",
     "eval_seed",
+    "source_eval_dir",
+    "weight_path",
     "slice_geometry",
 }
 
@@ -24,12 +27,12 @@ RESERVED_COLUMNS = {
 def metric_columns_from_rows(rows: Sequence[Mapping[str, object]]) -> List[str]:
     """
     Extract metric column names from case-level metric rows.
-    
+
     Parameters
     ----------
     rows : Sequence[Mapping[str, object]]
         Row dictionaries that should be written or summarized.
-    
+
     Returns
     -------
     List[str]
@@ -45,14 +48,14 @@ def metric_columns_from_rows(rows: Sequence[Mapping[str, object]]) -> List[str]:
 def summarize_metric_values(values: Iterable[float], confidence: float = 0.95) -> Dict[str, float | int]:
     """
     Summarize a metric sequence with descriptive statistics and confidence intervals.
-    
+
     Parameters
     ----------
     values : Iterable[float]
         Numeric values that should be summarized.
     confidence : float
         Confidence level used for interval estimation. Defaults to 0.95.
-    
+
     Returns
     -------
     Dict[str, float | int]
@@ -99,7 +102,7 @@ def summarize_case_metrics(
 ) -> Dict[str, Dict[str, float | int]]:
     """
     Summarize case-level metrics across all selected metric columns.
-    
+
     Parameters
     ----------
     rows : Sequence[Mapping[str, object]]
@@ -108,7 +111,7 @@ def summarize_case_metrics(
         Metric names that should be summarized. Defaults to None.
     confidence : float
         Confidence level used for interval estimation. Defaults to 0.95.
-    
+
     Returns
     -------
     Dict[str, Dict[str, float | int]]
@@ -130,12 +133,12 @@ def summarize_case_metrics(
 def summary_rows_from_nested(summary: Mapping[str, Mapping[str, float | int]]) -> List[Dict[str, float | int | str]]:
     """
     Flatten nested summary statistics into row dictionaries.
-    
+
     Parameters
     ----------
     summary : Mapping[str, Mapping[str, float | int]]
         Nested summary dictionary to flatten.
-    
+
     Returns
     -------
     List[Dict[str, float | int | str]]
